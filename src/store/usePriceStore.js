@@ -6,6 +6,8 @@ const usePriceStore = create(
     (set, get) => ({
       /** @type {{ [ticker: string]: { price: number, currency: string, updatedAt: string } }} */
       prices: {},
+      /** @type {{ [ticker: string]: string }} 최근 가격 조회 실패 사유 (ticker → reason) */
+      priceErrors: {},
       isLoading: false,
       error: null,
 
@@ -36,6 +38,9 @@ const usePriceStore = create(
       /** 특정 종목의 현재가 엔트리 반환 (없으면 null) */
       getPrice: (ticker) => get().prices[ticker] ?? null,
 
+      setPriceErrors: (errors) => set({ priceErrors: errors }),
+      clearPriceErrors: () => set({ priceErrors: {} }),
+
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
 
@@ -43,7 +48,7 @@ const usePriceStore = create(
     }),
     {
       name: 'prices-v2',
-      // isLoading·error는 UI 상태이므로 영속화 제외
+      // priceErrors·isLoading·error는 UI 상태이므로 영속화 제외
       partialize: (state) => ({ prices: state.prices }),
     }
   )

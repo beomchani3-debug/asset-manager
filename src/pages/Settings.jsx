@@ -4,6 +4,7 @@ import useTransactionStore, { calcHoldings } from '../store/useTransactionStore'
 import useCashFlowStore from '../store/useCashFlowStore'
 import useToastStore from '../store/useToastStore'
 import useSyncStore from '../store/useSyncStore'
+import usePriceStore from '../store/usePriceStore'
 import { migrateToCloud, loadFromCloud, clearAllCloudData } from '../services/cloudSync'
 
 const APP_VERSION = '1.0.0'
@@ -55,6 +56,7 @@ export default function Settings() {
   const fileInputRef   = useRef(null)
 
   const { isConfigured, isSyncing, lastSyncAt, syncError, clearError } = useSyncStore()
+  const priceErrors = usePriceStore((s) => s.priceErrors)
   const [migrateLoading, setMigrateLoading] = useState(false)
 
   // ① 목표 설정
@@ -322,6 +324,25 @@ export default function Settings() {
           )}
         </div>
       </Section>
+
+      {/* ③-b 가격 조회 오류 */}
+      {Object.keys(priceErrors).length > 0 && (
+        <Section title="가격 조회 오류">
+          <div className="px-4 py-4 space-y-2">
+            {Object.entries(priceErrors).map(([ticker, reason]) => (
+              <div key={ticker} className="flex items-start justify-between gap-2 bg-amber-50 rounded-xl px-3 py-2.5">
+                <div className="min-w-0">
+                  <span className="text-[12px] font-bold text-amber-700">{ticker}</span>
+                  <p className="text-[11px] text-amber-600 break-all">{reason}</p>
+                </div>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-400 text-center">
+              대시보드 새로고침 버튼으로 재시도하거나, 환율 설정에서 수동으로 입력하세요
+            </p>
+          </div>
+        </Section>
+      )}
 
       {/* ④ 데이터 동기화 */}
       <Section title="데이터 동기화 (Supabase)">

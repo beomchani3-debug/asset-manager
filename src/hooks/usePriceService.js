@@ -12,7 +12,7 @@ import useToastStore from '../store/useToastStore'
  *  - 자동 polling 없음: 대시보드 새로고침 버튼 클릭 시에만 호출
  *  - refreshAll: 환율 → 현재가 순서 (원화 환산 정확도 보장)
  *  - 실패한 항목은 기존 저장값 유지 (서비스 레이어에서 처리)
- *  - 완료/실패 결과를 Toast로 알림
+ *  - 완료/실패 결과를 Toast로 알림, 실패 티커는 콘솔 + 스토어에 기록
  */
 export function usePriceService() {
   const [isLoading, setIsLoading] = useState(false)
@@ -38,24 +38,26 @@ export function usePriceService() {
     setIsLoading(true)
     try {
       await fetchFxRates()
-      await fetchAllPrices(holdings)
+      const { failed } = await fetchAllPrices(holdings)
       setLastUpdatedAt(new Date())
 
-      // 가격 조회 결과 확인 → 토스트
-      const prices = usePriceStore.getState().prices
-      const active = holdings.filter((h) => h.quantity > 0)
-      if (active.length === 0) return
-
-      const missing = active.filter((h) => !prices[h.ticker])
-      if (missing.length > 0) {
+      // 실패 사유를 스토어에 저장 (Settings 등에서 확인 가능)
+      if (failed.length > 0) {
+        usePriceStore.getState().setPriceErrors(
+          Object.fromEntries(failed.map(({ ticker, reason }) => [ticker, reason]))
+        )
+        const names = failed.map((f) => f.ticker).join(', ')
+        console.warn('[usePriceService] 가격 조회 실패:', failed)
         useToastStore.getState().push(
-          `${missing.length}개 종목 가격 조회 실패`,
+          `가격 조회 실패 (${failed.length}개): ${names}`,
           'warning'
         )
       } else {
+        usePriceStore.getState().clearPriceErrors()
         useToastStore.getState().push('현재가 업데이트 완료', 'success')
       }
-    } catch {
+    } catch (err) {
+      console.error('[usePriceService]', err)
       useToastStore.getState().push('현재가 조회에 실패했습니다', 'error')
     } finally {
       setIsLoading(false)
