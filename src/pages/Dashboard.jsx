@@ -5,6 +5,7 @@ import useCashFlowStore from '../store/useCashFlowStore'
 import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
 import { usePriceService } from '../hooks/usePriceService'
+import { calcPnL } from '../utils/pnl'
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
 const fmtKrw = (n) => `${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
@@ -70,11 +71,12 @@ export default function Dashboard() {
   // ── Portfolio stats ───────────────────────────────────────────────────────
   const portfolio = useMemo(() => {
     if (!holdings.length) {
-      return { totalMarketValue: 0, totalPrincipal: 0, pnl: 0, pnlPct: 0, byMarket: {} }
+      return { totalMarketValue: 0, totalPrincipal: 0, pnl: 0, pnlPct: 0, byMarket: {}, someNoPrice: false }
     }
 
     let totalMarketValue = 0
     let totalPrincipal   = 0
+    let countNoPrice     = 0
     const byMarket = {}
 
     for (const h of holdings) {
@@ -86,6 +88,8 @@ export default function Dashboard() {
         if      (h.currency === 'USD') fx = fxUSD > 0 ? fxUSD : h.avgFxRate
         else if (h.currency === 'JPY') fx = fxJPY > 0 ? fxJPY : h.avgFxRate
         mv = h.quantity * entry.price * fx
+      } else {
+        countNoPrice++
       }
 
       totalMarketValue += mv
@@ -95,8 +99,10 @@ export default function Dashboard() {
 
     const pnl    = totalMarketValue - totalPrincipal
     const pnlPct = totalPrincipal > 0 ? (pnl / totalPrincipal) * 100 : 0
-    return { totalMarketValue, totalPrincipal, pnl, pnlPct, byMarket }
+    return { totalMarketValue, totalPrincipal, pnl, pnlPct, byMarket, someNoPrice: countNoPrice > 0 }
   }, [holdings, prices, fxUSD, fxJPY])
+
+  const pnlStats = useMemo(() => calcPnL(transactions), [transactions])
 
   // ── Monthly cash flow ─────────────────────────────────────────────────────
   // cashFlows in deps triggers re-compute when data changes (getMonthlySummary is stable)
@@ -140,6 +146,13 @@ export default function Dashboard() {
   const lastUpdatedStr = lastUpdatedAt
     ? lastUpdatedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
     : null
+
+  // 손익 요약 계산
+  const unrealizedPnl = portfolio.pnl
+  const realizedPnl   = pnlStats.totalRealized
+  const totalPnl      = unrealizedPnl + realizedPnl
+  const totalReturn   = portfolio.totalPrincipal > 0
+    ? (totalPnl / portfolio.totalPrincipal) * 100 : 0
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -205,6 +218,42 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* ②-B 손익 요약 */}
+      {holdings.length > 0 && (
+        <Card className="p-4">
+          {portfolio.someNoPrice && (
+            <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mb-3 text-center">
+              일부 종목은 마지막 가격 기준으로 계산됩니다
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {[
+              { label: '미실현손익', value: unrealizedPnl },
+              { label: '실현손익',   value: realizedPnl   },
+              { label: '총 손익',    value: totalPnl,     bold: true },
+              { label: '총 수익률',  value: totalReturn,  percent: true, bold: true },
+            ].map(({ label, value, bold, percent }) => (
+              <div key={label}>
+                <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
+                {percent ? (
+                  <p className={`text-sm tabular-nums ${bold ? 'font-bold' : 'font-semibold'} ${
+                    value === 0 ? 'text-slate-500' : value > 0 ? 'text-blue-600' : 'text-red-500'
+                  }`}>
+                    {fmtPct(value)}
+                  </p>
+                ) : (
+                  <p className={`text-sm tabular-nums ${bold ? 'font-bold' : 'font-semibold'} ${
+                    value === 0 ? 'text-slate-500' : value > 0 ? 'text-blue-600' : 'text-red-500'
+                  }`}>
+                    {fmtKrwSigned(value)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ③ 이번달 현금흐름 */}
       <section>

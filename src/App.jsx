@@ -5,6 +5,7 @@ import Portfolio from './pages/Portfolio'
 import Transactions from './pages/Transactions'
 import CashFlow from './pages/CashFlow'
 import Settings from './pages/Settings'
+import PnLAnalysis from './pages/PnLAnalysis'
 import { useDataSync } from './hooks/useDataSync'
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/budget" element={<CashFlow />} />
+        <Route path="/pnl" element={<PnLAnalysis />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>

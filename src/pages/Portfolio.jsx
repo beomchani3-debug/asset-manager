@@ -3,6 +3,7 @@ import { Treemap, ResponsiveContainer, Tooltip } from 'recharts'
 import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
+import { calcPnL } from '../utils/pnl'
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const fmtKrw = (n) => `${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
@@ -121,7 +122,7 @@ function TreeTooltip({ active, payload }) {
 }
 
 // ─── HoldingCard ──────────────────────────────────────────────────────────────
-function HoldingCard({ holding, onClick }) {
+function HoldingCard({ holding, onClick, realizedPnl }) {
   const { hasPrice, priceEntry, marketValue, unrealizedPnl, pnlPct } = holding
   const up = unrealizedPnl >= 0
 
@@ -184,9 +185,17 @@ function HoldingCard({ holding, onClick }) {
       ) : (
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
-            가격 미조회 · 수동 입력 필요
+            현재가 조회 실패 · 수동 입력 필요
           </span>
           <span className="text-xs text-slate-400 tabular-nums">원금 {fmtKrw(holding.principal)}</span>
+        </div>
+      )}
+      {realizedPnl !== 0 && (
+        <div className="mt-2 pt-2 border-t border-slate-50 flex items-center justify-between">
+          <span className="text-[10px] text-slate-400">실현손익</span>
+          <span className={`text-xs font-semibold tabular-nums ${realizedPnl > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+            {fmtKrwSigned(realizedPnl)}
+          </span>
         </div>
       )}
     </div>
@@ -216,6 +225,13 @@ function DetailModal({ holding, transactions, onClose }) {
       .sort((a, b) => new Date(b.date) - new Date(a.date)),
     [transactions, holding.ticker, holding.broker]
   )
+
+  const realizedHistory = useMemo(() => {
+    const tickerTxs = transactions.filter(
+      t => t.ticker === holding.ticker && t.broker === holding.broker
+    )
+    return calcPnL(tickerTxs).realizedList.sort((a, b) => new Date(b.date) - new Date(a.date))
+  }, [transactions, holding.ticker, holding.broker])
 
   const divHistory = useMemo(() =>
     transactions
@@ -326,6 +342,44 @@ function DetailModal({ holding, transactions, onClose }) {
             )}
           </div>
 
+          {realizedHistory.length > 0 && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                매도 이력 / 실현손익 ({realizedHistory.length}건)
+              </p>
+              <div className="rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="grid grid-cols-4 px-3 py-2 bg-slate-50 text-[10px] font-semibold text-slate-400">
+                  {['날짜', '수량', '수익금', '실현손익'].map((h, i) => (
+                    <span key={h} className={i > 0 ? 'text-right' : ''}>{h}</span>
+                  ))}
+                </div>
+                {realizedHistory.map((r) => (
+                  <div key={r.id} className="grid grid-cols-4 px-3 py-2.5 border-t border-slate-50 text-[11px] tabular-nums">
+                    <span className="text-slate-500">{r.date.slice(5)}</span>
+                    <span className="text-right text-slate-700">{fmtQty(r.qty)}</span>
+                    <span className="text-right text-slate-700">
+                      {Math.round(r.proceedsKrw).toLocaleString('ko-KR')}
+                    </span>
+                    <span className={`text-right font-semibold ${r.pnl >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                      {r.pnl >= 0 ? '+' : '−'}{Math.round(Math.abs(r.pnl)).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-4 px-3 py-2.5 border-t border-slate-200 bg-slate-50 text-[11px] tabular-nums">
+                  <span className="font-semibold text-slate-600 col-span-3">총 실현손익</span>
+                  <span className={`text-right font-bold ${
+                    realizedHistory.reduce((s, r) => s + r.pnl, 0) >= 0 ? 'text-blue-600' : 'text-red-500'
+                  }`}>
+                    {(() => {
+                      const total = realizedHistory.reduce((s, r) => s + r.pnl, 0)
+                      return `${total >= 0 ? '+' : '−'}${Math.round(Math.abs(total)).toLocaleString('ko-KR')}`
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
               배당 이력 ({divHistory.length}건)
@@ -398,6 +452,8 @@ export default function Portfolio() {
     if (sortBy === '종목명순')   return [...base].sort((a, b) => a.assetName.localeCompare(b.assetName, 'ko'))
     return base
   }, [enriched, marketFilter, sortBy])
+
+  const pnlByTicker = useMemo(() => calcPnL(transactions).byTicker, [transactions])
 
   const { totalMV, totalPrin, totalPnl } = useMemo(() => {
     const mv   = enriched.reduce((s, h) => s + h.marketValue, 0)
@@ -477,6 +533,7 @@ export default function Portfolio() {
                 key={`${h.ticker}::${h.broker}`}
                 holding={h}
                 onClick={() => setSelected(h)}
+                realizedPnl={pnlByTicker[`${h.ticker}::${h.broker}`] ?? 0}
               />
             ))
           ) : holdings.length === 0 ? (
