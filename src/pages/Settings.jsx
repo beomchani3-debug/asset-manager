@@ -5,7 +5,9 @@ import useCashFlowStore from '../store/useCashFlowStore'
 import useToastStore from '../store/useToastStore'
 import useSyncStore from '../store/useSyncStore'
 import usePriceStore from '../store/usePriceStore'
+import useAuthStore from '../store/useAuthStore'
 import { migrateToCloud, loadFromCloud, clearAllCloudData } from '../services/cloudSync'
+import { supabase } from '../lib/supabase'
 
 const APP_VERSION = '1.0.0'
 
@@ -54,6 +56,11 @@ export default function Settings() {
   const resetSettings  = useSettingsStore((s) => s.resetSettings)
   const pushToast      = useToastStore((s) => s.push)
   const fileInputRef   = useRef(null)
+  const user           = useAuthStore((s) => s.user)
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+  }
 
   const { isConfigured, isSyncing, lastSyncAt, syncError, clearError } = useSyncStore()
   const priceErrors = usePriceStore((s) => s.priceErrors)
@@ -188,6 +195,21 @@ export default function Settings() {
 
   return (
     <div className="p-4 pb-10 space-y-4">
+
+      {/* 계정 */}
+      {user && (
+        <Section title="계정">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <span className="text-[12px] text-slate-500">{user.email}</span>
+            <button
+              onClick={handleLogout}
+              className="text-[12px] font-semibold text-red-500 active:opacity-70"
+            >
+              로그아웃
+            </button>
+          </div>
+        </Section>
+      )}
 
       {/* ① 목표 설정 */}
       <Section title="목표 설정">
