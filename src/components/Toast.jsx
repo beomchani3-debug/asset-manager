@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import useToastStore from '../store/useToastStore'
+import { T } from '../theme'
 
-const TYPE_CLS = {
-  success: 'bg-emerald-600',
-  error:   'bg-red-500',
-  warning: 'bg-amber-500',
+const TYPE_BG = {
+  success: T.green,
+  error:   T.red,
+  warning: T.amber,
 }
 const TYPE_ICON = {
   success: '✓',
@@ -26,9 +27,9 @@ function ToastItem({ id, message, type }) {
         flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg
         pointer-events-auto cursor-pointer active:opacity-80
         text-white transition-all duration-300
-        ${TYPE_CLS[type] ?? TYPE_CLS.success}
         ${show ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-3 scale-95'}
       `}
+      style={{ backgroundColor: TYPE_BG[type] ?? TYPE_BG.success }}
     >
       <span className="text-[15px] font-bold shrink-0">{TYPE_ICON[type] ?? '✓'}</span>
       <p className="text-[13px] font-semibold">{message}</p>

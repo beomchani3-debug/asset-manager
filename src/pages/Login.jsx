@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { T } from '../theme'
 
 export default function Login() {
   const [email,    setEmail]    = useState('')
@@ -24,55 +25,74 @@ export default function Login() {
     }
   }
 
-  const inpCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-blue-400 transition-colors'
+  const inpStyle = {
+    backgroundColor: T.inputBg,
+    borderColor: T.inputBorder,
+    color: T.textPrimary,
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-6"
+      style={{ backgroundColor: T.bg }}
+    >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-4xl mb-2">💼</div>
-          <h1 className="text-[22px] font-bold text-slate-800">자산관리</h1>
-          <p className="text-[13px] text-slate-400 mt-1">로그인하여 시작하세요</p>
+          <h1 className="text-[22px] font-bold" style={{ color: T.goldLight }}>자산관리</h1>
+          <p className="text-[13px] mt-1" style={{ color: T.textMuted }}>로그인하여 시작하세요</p>
         </div>
-        <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+        <form
+          onSubmit={handleLogin}
+          className="rounded-2xl p-6 space-y-4"
+          style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}
+        >
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">이메일</label>
+            <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>이메일</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={inpCls}
+              className="w-full border rounded-xl px-4 py-3 text-[14px] outline-none transition-colors focus:border-[#C9A84C]"
+              style={inpStyle}
               placeholder="email@example.com"
               required
               autoComplete="email"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">비밀번호</label>
+            <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>비밀번호</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={inpCls}
+              className="w-full border rounded-xl px-4 py-3 text-[14px] outline-none transition-colors focus:border-[#C9A84C]"
+              style={inpStyle}
               placeholder="••••••••"
               required
               autoComplete="current-password"
             />
           </div>
           {error && (
-            <p className="text-[12px] text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+            <p
+              className="text-[12px] rounded-xl px-3 py-2"
+              style={{ color: T.red, backgroundColor: 'rgba(224,82,82,0.1)', border: `1px solid ${T.red}` }}
+            >
+              {error}
+            </p>
           )}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white text-[14px] font-bold rounded-xl active:opacity-80 disabled:opacity-50"
+            className="w-full py-3 text-[14px] font-bold rounded-xl active:opacity-80 disabled:opacity-50"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
           >
             {loading ? '로그인 중…' : '로그인'}
           </button>
         </form>
-        <p className="text-center text-[12px] text-slate-400 mt-4">
+        <p className="text-center text-[12px] mt-4" style={{ color: T.textMuted }}>
           계정이 없으신가요?{' '}
-          <Link to="/register" className="text-blue-600 font-semibold">회원가입</Link>
+          <Link to="/register" className="font-semibold" style={{ color: T.gold }}>회원가입</Link>
         </p>
       </div>
     </div>

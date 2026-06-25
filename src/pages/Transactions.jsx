@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
+import { T } from '../theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SIDE_FILTER  = ['전체', '매수', '매도', '배당']
@@ -9,15 +10,15 @@ const BROKERS      = ['농협증권', '메리츠증권', '바이낸스']
 const CURRENCIES   = ['KRW', 'USD', 'JPY']
 const MKT_CCY      = { 미국: 'USD', 국내: 'KRW', 일본: 'JPY', 코인: 'USD' }
 
-const BADGE_CLS = {
-  매수: 'bg-blue-100 text-blue-700',
-  매도: 'bg-red-100 text-red-600',
-  배당: 'bg-emerald-100 text-emerald-700',
+const BADGE_STYLE = {
+  매수: { backgroundColor: '#0A1525', color: T.blue  },
+  매도: { backgroundColor: '#200A0A', color: T.red   },
+  배당: { backgroundColor: '#0D1A0D', color: T.green },
 }
-const AMT_CLS = {
-  매수: 'text-blue-600',
-  매도: 'text-red-500',
-  배당: 'text-emerald-600',
+const AMT_COLOR = {
+  매수: T.blue,
+  매도: T.red,
+  배당: T.green,
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ function ymLabel(ym) {
   return `${y}년 ${+m}월`
 }
 
-// ─── TxRow (스와이프 / 길게 누르기 → 삭제) ───────────────────────────────────
+// ─── TxRow ────────────────────────────────────────────────────────────────────
 function TxRow({ tx, onEdit, onDelete }) {
   const [revealed, setRevealed] = useState(false)
   const startX    = useRef(0)
@@ -76,9 +77,9 @@ function TxRow({ tx, onEdit, onDelete }) {
 
   return (
     <div className="relative overflow-hidden select-none">
-      {/* 삭제 버튼 (뒤에 고정) */}
       <button
-        className="absolute right-0 inset-y-0 w-[72px] bg-red-500 flex flex-col items-center justify-center gap-0.5 active:bg-red-600"
+        className="absolute right-0 inset-y-0 w-[72px] flex flex-col items-center justify-center gap-0.5 active:opacity-80"
+        style={{ backgroundColor: T.red }}
         onClick={(e) => { e.stopPropagation(); onDelete() }}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -90,34 +91,37 @@ function TxRow({ tx, onEdit, onDelete }) {
         <span className="text-[10px] font-bold text-white">삭제</span>
       </button>
 
-      {/* 행 본문 */}
       <div
-        className={`relative bg-white transition-transform duration-200 ${revealed ? '-translate-x-[72px]' : 'translate-x-0'}`}
+        className={`relative transition-transform duration-200 ${revealed ? '-translate-x-[72px]' : 'translate-x-0'}`}
+        style={{ backgroundColor: T.card }}
         onTouchStart={tStart}
         onTouchMove={tMove}
         onTouchEnd={tEnd}
         onClick={handleClick}
       >
         <div className="flex items-center gap-2.5 px-4 py-3.5">
-          <span className="text-[11px] text-slate-400 tabular-nums w-9 shrink-0 leading-tight">
+          <span className="text-[11px] tabular-nums w-9 shrink-0 leading-tight" style={{ color: T.textMuted }}>
             {fmtMd(tx.date)}
           </span>
 
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{tx.assetName}</p>
-            <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">{tx.ticker} · {tx.broker}</p>
+            <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: T.textPrimary }}>{tx.assetName}</p>
+            <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: T.textMuted }}>{tx.ticker} · {tx.broker}</p>
           </div>
 
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${BADGE_CLS[tx.side] ?? BADGE_CLS['매수']}`}>
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+            style={BADGE_STYLE[tx.side] ?? BADGE_STYLE['매수']}
+          >
             {tx.side}
           </span>
 
           <div className="text-right shrink-0 min-w-[80px]">
-            <p className={`text-[13px] font-semibold tabular-nums leading-tight ${AMT_CLS[tx.side] ?? ''}`}>
+            <p className="text-[13px] font-semibold tabular-nums leading-tight" style={{ color: AMT_COLOR[tx.side] ?? T.textPrimary }}>
               {tx.side === '매도' ? '−' : '+'}{fmtKrw(tx.krwAmount)}
             </p>
             {tx.side !== '배당' && (
-              <p className="text-[10px] text-slate-400 tabular-nums leading-tight mt-0.5">
+              <p className="text-[10px] tabular-nums leading-tight mt-0.5" style={{ color: T.textMuted }}>
                 {tx.quantity.toLocaleString('ko-KR')}주
               </p>
             )}
@@ -162,7 +166,7 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
   const [form, setFormRaw] = useState(() => initForm(tx, fxRates))
   const [visible, setVisible]       = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
-  const [manualKrw, setManualKrw]   = useState(!!tx)   // edit: preserve stored value
+  const [manualKrw, setManualKrw]   = useState(!!tx)
   const [showSugg, setShowSugg]     = useState(false)
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
@@ -170,7 +174,6 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
   const isDividend = form.side === '배당'
   const isKRW      = form.currency === 'KRW'
 
-  // ── 원화금액 자동 계산 ────────────────────────────────────────────────────
   useEffect(() => {
     if (manualKrw) return
     const p  = parseFloat(form.price)    || 0
@@ -210,7 +213,6 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
     setTimeout(onClose, 300)
   }
 
-  // ── 종목 자동완성 ──────────────────────────────────────────────────────────
   const filteredSugg = useMemo(() => {
     if (!form.assetName) return []
     const q = form.assetName.toLowerCase()
@@ -233,7 +235,6 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
     setShowSugg(false)
   }
 
-  // ── 배당 표시값 ────────────────────────────────────────────────────────────
   const divNetOrig = isDividend
     ? Math.max(0, (parseFloat(form.price)||0) * (parseFloat(form.quantity)||0) - (parseFloat(form.tax)||0))
     : 0
@@ -241,7 +242,6 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
     ? Math.round(divNetOrig * (isKRW ? 1 : (parseFloat(form.fxRate)||0)))
     : 0
 
-  // ── 저장 ─────────────────────────────────────────────────────────────────
   function handleSave() {
     const p   = parseFloat(form.price)    || 0
     const q   = parseFloat(form.quantity) || 0
@@ -269,67 +269,83 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
     form.date && form.assetName.trim() && form.ticker.trim() &&
     parseFloat(form.price) > 0 && parseFloat(form.quantity) > 0
 
-  // ── 공통 인풋 스타일 ────────────────────────────────────────────────────────
-  const cls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-blue-400 transition-colors'
-  const lbl = 'block text-[11px] font-semibold text-slate-500 mb-1.5'
+  const inpStyle = { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }
+  const lbl = 'block text-[11px] font-semibold mb-1.5'
+
+  const sideColor = (s) => s === '매수' ? T.blue : s === '매도' ? T.red : T.green
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={close}>
-      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`relative w-full max-w-[430px] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 max-h-[92vh] overflow-y-auto no-scrollbar ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`relative w-full max-w-[430px] rounded-t-3xl shadow-2xl transition-transform duration-300 max-h-[92vh] overflow-y-auto no-scrollbar ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, borderBottom: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 드래그 핸들 */}
-        <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white z-10">
-          <div className="w-10 h-1 rounded-full bg-slate-200" />
+        <div className="flex justify-center pt-3 pb-1 sticky top-0 z-10" style={{ backgroundColor: T.card }}>
+          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: T.goldDim }} />
         </div>
 
         <div className="px-5 pt-2 pb-12 space-y-4">
           {/* 헤더 */}
           <div className="flex items-center justify-between">
-            <h3 className="text-[17px] font-bold text-slate-900">{tx ? '거래 수정' : '거래 추가'}</h3>
-            <button onClick={close} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm active:opacity-70">✕</button>
+            <h3 className="text-[17px] font-bold" style={{ color: T.goldLight }}>{tx ? '거래 수정' : '거래 추가'}</h3>
+            <button
+              onClick={close}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm active:opacity-70"
+              style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+            >✕</button>
           </div>
 
-          {/* ── 거래유형 ── */}
+          {/* 거래유형 */}
           <div className="flex gap-2">
             {['매수', '매도', '배당'].map((s) => {
               const on = form.side === s
-              const c  = s === '매수' ? 'bg-blue-600' : s === '매도' ? 'bg-red-500' : 'bg-emerald-500'
               return (
-                <button key={s} onClick={() => set('side', s)}
-                  className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-colors ${on ? `${c} text-white` : 'bg-slate-100 text-slate-500'}`}>
+                <button
+                  key={s}
+                  onClick={() => set('side', s)}
+                  className="flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-colors"
+                  style={on
+                    ? { backgroundColor: sideColor(s), color: '#0A0A0A' }
+                    : { backgroundColor: T.inputBg, color: T.textMuted }
+                  }
+                >
                   {s}
                 </button>
               )
             })}
           </div>
 
-          {/* ── 거래일 + 증권사 ── */}
+          {/* 거래일 + 증권사 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>거래일</label>
-              <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={cls} />
+              <label className={lbl} style={{ color: T.textMuted }}>거래일</label>
+              <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle} />
             </div>
             <div>
-              <label className={lbl}>증권사</label>
-              <select value={form.broker} onChange={(e) => set('broker', e.target.value)} className={cls}>
+              <label className={lbl} style={{ color: T.textMuted }}>증권사</label>
+              <select value={form.broker} onChange={(e) => set('broker', e.target.value)}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle}>
                 {BROKERS.map(b => <option key={b}>{b}</option>)}
               </select>
             </div>
           </div>
 
-          {/* ── 종목명 (자동완성) ── */}
+          {/* 종목명 (자동완성) */}
           <div>
-            <label className={lbl}>종목명</label>
+            <label className={lbl} style={{ color: T.textMuted }}>종목명</label>
             <input
               value={form.assetName}
               onChange={(e) => { set('assetName', e.target.value); setShowSugg(true) }}
               onFocus={() => setShowSugg(true)}
               onBlur={() => setTimeout(() => setShowSugg(false), 180)}
               placeholder="삼성전자"
-              className={cls}
+              className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+              style={inpStyle}
             />
             {showSugg && filteredSugg.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -338,7 +354,8 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
                     key={`${s.ticker}::${s.broker}`}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => selectSuggestion(s)}
-                    className="text-[11px] bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold active:opacity-70"
+                    className="text-[11px] px-2.5 py-1 rounded-full font-semibold active:opacity-70"
+                    style={{ backgroundColor: 'rgba(91,155,213,0.1)', color: T.blue }}
                   >
                     {s.assetName}
                   </button>
@@ -347,40 +364,49 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
             )}
           </div>
 
-          {/* ── 티커 + 시장 ── */}
+          {/* 티커 + 시장 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>티커</label>
+              <label className={lbl} style={{ color: T.textMuted }}>티커</label>
               <input
                 value={form.ticker}
                 onChange={(e) => set('ticker', e.target.value.toUpperCase())}
                 placeholder="AAPL"
-                className={`${cls} font-mono`}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors font-mono"
+                style={inpStyle}
               />
             </div>
             <div>
-              <label className={lbl}>시장</label>
-              <select value={form.market} onChange={(e) => set('market', e.target.value)} className={cls}>
+              <label className={lbl} style={{ color: T.textMuted }}>시장</label>
+              <select value={form.market} onChange={(e) => set('market', e.target.value)}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle}>
                 {MARKETS.map(m => <option key={m}>{m}</option>)}
               </select>
             </div>
           </div>
 
-          {/* ── 섹터 ── */}
+          {/* 섹터 */}
           <div>
-            <label className={lbl}>섹터 (선택)</label>
+            <label className={lbl} style={{ color: T.textMuted }}>섹터 (선택)</label>
             <input value={form.sector} onChange={(e) => set('sector', e.target.value)}
-              placeholder="리츠, ETF, 단기채권 등" className={cls} />
+              placeholder="리츠, ETF, 단기채권 등"
+              className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+              style={inpStyle} />
           </div>
 
-          {/* ── 배당 통화 선택 ── */}
+          {/* 배당 통화 선택 */}
           {isDividend && (
             <div>
-              <label className={lbl}>배당 통화</label>
+              <label className={lbl} style={{ color: T.textMuted }}>배당 통화</label>
               <div className="flex gap-2">
                 {CURRENCIES.map(c => (
                   <button key={c} onClick={() => set('currency', c)}
-                    className={`flex-1 py-2 rounded-xl text-[12px] font-bold transition-colors ${form.currency === c ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    className="flex-1 py-2 rounded-xl text-[12px] font-bold transition-colors"
+                    style={form.currency === c
+                      ? { backgroundColor: T.goldDim, color: T.goldLight }
+                      : { backgroundColor: T.inputBg, color: T.textMuted }
+                    }>
                     {c}
                   </button>
                 ))}
@@ -388,47 +414,54 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
             </div>
           )}
 
-          {/* ════ 매수 / 매도 필드 ════ */}
+          {/* 매수 / 매도 필드 */}
           {!isDividend && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>거래단가 ({form.currency})</label>
+                  <label className={lbl} style={{ color: T.textMuted }}>거래단가 ({form.currency})</label>
                   <input type="number" inputMode="decimal" value={form.price}
-                    onChange={(e) => set('price', e.target.value)} placeholder="0" className={cls} />
+                    onChange={(e) => set('price', e.target.value)} placeholder="0"
+                    className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle} />
                 </div>
                 <div>
-                  <label className={lbl}>수량</label>
+                  <label className={lbl} style={{ color: T.textMuted }}>수량</label>
                   <input type="number" inputMode="decimal" value={form.quantity}
-                    onChange={(e) => set('quantity', e.target.value)} placeholder="0" className={cls} />
+                    onChange={(e) => set('quantity', e.target.value)} placeholder="0"
+                    className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle} />
                 </div>
               </div>
 
               {!isKRW && (
                 <div>
-                  <label className={lbl}>환율 (원/{form.currency})</label>
+                  <label className={lbl} style={{ color: T.textMuted }}>환율 (원/{form.currency})</label>
                   <input type="number" inputMode="decimal" value={form.fxRate}
                     onChange={(e) => { setManualKrw(false); set('fxRate', e.target.value) }}
-                    placeholder="0" className={cls} />
+                    placeholder="0"
+                    className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle} />
                 </div>
               )}
 
-              {/* 원화금액: 자동계산 + 수동 override */}
               <div>
-                <label className={lbl}>원화금액</label>
+                <label className={lbl} style={{ color: T.textMuted }}>원화금액</label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="number" inputMode="decimal"
                     value={form.krwAmount}
                     onChange={(e) => { setManualKrw(true); setFormRaw(p => ({ ...p, krwAmount: e.target.value })) }}
                     placeholder="자동 계산"
-                    className={`${cls} flex-1`}
+                    className="flex-1 border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle}
                   />
                   {manualKrw && (
                     <button
                       onClick={() => setManualKrw(false)}
                       title="자동 계산으로 초기화"
-                      className="shrink-0 w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 text-base active:opacity-70"
+                      className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-base active:opacity-70"
+                      style={{ backgroundColor: T.inputBg, color: T.textMuted }}
                     >↺</button>
                   )}
                 </div>
@@ -436,56 +469,62 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
             </>
           )}
 
-          {/* ════ 배당 필드 ════ */}
+          {/* 배당 필드 */}
           {isDividend && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>주당배당금 ({form.currency})</label>
+                  <label className={lbl} style={{ color: T.textMuted }}>주당배당금 ({form.currency})</label>
                   <input type="number" inputMode="decimal" value={form.price}
-                    onChange={(e) => set('price', e.target.value)} placeholder="0" className={cls} />
+                    onChange={(e) => set('price', e.target.value)} placeholder="0"
+                    className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle} />
                 </div>
                 <div>
-                  <label className={lbl}>수량 (주)</label>
+                  <label className={lbl} style={{ color: T.textMuted }}>수량 (주)</label>
                   <input type="number" inputMode="decimal" value={form.quantity}
-                    onChange={(e) => set('quantity', e.target.value)} placeholder="0" className={cls} />
+                    onChange={(e) => set('quantity', e.target.value)} placeholder="0"
+                    className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle} />
                 </div>
               </div>
 
               <div>
-                <label className={lbl}>세금 ({form.currency}, 선택)</label>
+                <label className={lbl} style={{ color: T.textMuted }}>세금 ({form.currency}, 선택)</label>
                 <input type="number" inputMode="decimal" value={form.tax}
-                  onChange={(e) => set('tax', e.target.value)} placeholder="0" className={cls} />
+                  onChange={(e) => set('tax', e.target.value)} placeholder="0"
+                  className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                  style={inpStyle} />
               </div>
 
-              {/* 배당 계산 요약 */}
-              <div className="rounded-2xl bg-slate-50 px-4 py-3.5 space-y-2.5">
+              <div className="rounded-2xl px-4 py-3.5 space-y-2.5" style={{ backgroundColor: T.inputBg, border: `1px solid ${T.inputBorder}` }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-[12px] text-slate-500">실수령액 ({form.currency})</span>
-                  <span className="text-[13px] font-semibold text-slate-700 tabular-nums">
+                  <span className="text-[12px]" style={{ color: T.textMuted }}>실수령액 ({form.currency})</span>
+                  <span className="text-[13px] font-semibold tabular-nums" style={{ color: T.textPrimary }}>
                     {divNetOrig.toLocaleString('ko-KR')} {form.currency}
                   </span>
                 </div>
 
                 {!isKRW && (
                   <>
-                    <div className="h-px bg-slate-200" />
+                    <div className="h-px" style={{ backgroundColor: T.divider }} />
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[12px] text-slate-500 shrink-0">환율 (원/{form.currency})</span>
+                      <span className="text-[12px] shrink-0" style={{ color: T.textMuted }}>환율 (원/{form.currency})</span>
                       <input
                         type="number" inputMode="decimal" value={form.fxRate}
                         onChange={(e) => set('fxRate', e.target.value)}
                         placeholder="0"
-                        className="w-28 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] outline-none focus:border-blue-400 text-right tabular-nums"
+                        className="w-28 border rounded-lg px-2.5 py-1.5 text-[12px] outline-none focus:border-[#C9A84C] text-right tabular-nums"
+                        style={{ backgroundColor: T.card, borderColor: T.inputBorder, color: T.textPrimary }}
                       />
                     </div>
                   </>
                 )}
 
-                <div className="h-px bg-slate-200" />
+                <div className="h-px" style={{ backgroundColor: T.divider }} />
                 <div className="flex justify-between items-center">
-                  <span className="text-[12px] font-semibold text-slate-600">원화 수령액</span>
-                  <span className="text-[14px] font-bold text-emerald-600 tabular-nums">
+                  <span className="text-[12px] font-semibold" style={{ color: T.textPrimary }}>원화 수령액</span>
+                  <span className="text-[14px] font-bold tabular-nums" style={{ color: T.green }}>
                     {divKrwAmt.toLocaleString('ko-KR')}원
                   </span>
                 </div>
@@ -493,38 +532,50 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
             </>
           )}
 
-          {/* ── 메모 ── */}
+          {/* 메모 */}
           <div>
-            <label className={lbl}>메모 (선택)</label>
+            <label className={lbl} style={{ color: T.textMuted }}>메모 (선택)</label>
             <input value={form.memo} onChange={(e) => set('memo', e.target.value)}
-              placeholder="" className={cls} />
+              placeholder=""
+              className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+              style={inpStyle} />
           </div>
 
-          {/* ── 저장 ── */}
+          {/* 저장 */}
           <button
             onClick={handleSave}
             disabled={!canSave}
-            className="w-full py-3.5 bg-blue-600 text-white text-[14px] font-bold rounded-2xl disabled:opacity-40 active:opacity-80 transition-opacity"
+            className="w-full py-3.5 text-[14px] font-bold rounded-2xl disabled:opacity-40 active:opacity-80 transition-opacity"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
           >
             {tx ? '수정 완료' : '거래 저장'}
           </button>
 
-          {/* ── 삭제 (수정 모드) ── */}
+          {/* 삭제 (수정 모드) */}
           {tx && (
             confirmDel ? (
               <div className="flex gap-2">
-                <button onClick={() => setConfirmDel(false)}
-                  className="flex-1 py-3 bg-slate-100 text-slate-600 text-[13px] font-semibold rounded-2xl active:opacity-80">
+                <button
+                  onClick={() => setConfirmDel(false)}
+                  className="flex-1 py-3 text-[13px] font-semibold rounded-2xl active:opacity-80"
+                  style={{ backgroundColor: T.inputBg, color: T.textPrimary }}
+                >
                   취소
                 </button>
-                <button onClick={() => { onDelete(tx.id); close() }}
-                  className="flex-1 py-3 bg-red-500 text-white text-[13px] font-semibold rounded-2xl active:opacity-80">
+                <button
+                  onClick={() => { onDelete(tx.id); close() }}
+                  className="flex-1 py-3 text-[13px] font-semibold rounded-2xl active:opacity-80 text-white"
+                  style={{ backgroundColor: T.red }}
+                >
                   삭제 확인
                 </button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDel(true)}
-                className="w-full py-3 bg-slate-50 text-red-400 text-[13px] font-semibold rounded-2xl border border-slate-100 active:opacity-80">
+              <button
+                onClick={() => setConfirmDel(true)}
+                className="w-full py-3 text-[13px] font-semibold rounded-2xl border active:opacity-80"
+                style={{ backgroundColor: 'transparent', color: T.red, borderColor: T.inputBorder }}
+              >
                 거래 삭제
               </button>
             )
@@ -547,7 +598,6 @@ export default function Transactions() {
   const updateTransaction = useTransactionStore((s) => s.updateTransaction)
   const deleteTransaction = useTransactionStore((s) => s.deleteTransaction)
 
-  // 기존 종목 자동완성 (최초 등장 기준)
   const suggestions = useMemo(() => {
     const map = new Map()
     for (const t of transactions) {
@@ -561,7 +611,6 @@ export default function Transactions() {
     return [...map.values()]
   }, [transactions])
 
-  // 필터 + 검색 + 정렬
   const filtered = useMemo(() => {
     let list = transactions
     if (sideFilter !== '전체') list = list.filter(t => t.side === sideFilter)
@@ -584,24 +633,30 @@ export default function Transactions() {
   }
 
   return (
-    <div className="relative flex flex-col h-full">
+    <div className="relative flex flex-col h-full" style={{ backgroundColor: T.bg }}>
 
-      {/* ── 검색바 + 필터 ──────────────────────────────────────────────── */}
-      <div className="shrink-0 bg-white border-b border-slate-100 px-4 pt-3 pb-3 space-y-2.5">
-        {/* 검색 입력 + 추가 버튼 */}
+      {/* 검색바 + 필터 */}
+      <div
+        className="shrink-0 border-b px-4 pt-3 pb-3 space-y-2.5"
+        style={{ backgroundColor: T.card, borderColor: T.gold }}
+      >
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-slate-400 shrink-0">
+          <div
+            className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ backgroundColor: T.inputBg }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="shrink-0" style={{ color: T.textMuted }}>
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="종목명 또는 티커 검색"
-              className="flex-1 bg-transparent text-[13px] outline-none text-slate-700 placeholder:text-slate-400"
+              className="flex-1 bg-transparent text-[13px] outline-none"
+              style={{ color: T.textPrimary }}
             />
             {search && (
-              <button onClick={() => setSearch('')} className="text-slate-400 active:opacity-70">
+              <button onClick={() => setSearch('')} className="active:opacity-70" style={{ color: T.textMuted }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -611,38 +666,45 @@ export default function Transactions() {
           <button
             onClick={openAdd}
             aria-label="거래 추가"
-            className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl font-light shadow-sm shadow-blue-200 active:opacity-80 shrink-0"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-xl font-light active:opacity-80 shrink-0"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
           >+</button>
         </div>
 
-        {/* 타입 필터 */}
         <div className="flex gap-1.5">
           {SIDE_FILTER.map(s => (
-            <button key={s} onClick={() => setSideFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors ${
-                sideFilter === s ? 'bg-blue-600 text-white shadow-sm shadow-blue-200' : 'bg-slate-100 text-slate-500'
-              }`}>
+            <button
+              key={s}
+              onClick={() => setSideFilter(s)}
+              className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors"
+              style={sideFilter === s
+                ? { backgroundColor: T.gold, color: '#0A0A0A' }
+                : { backgroundColor: T.inputBg, color: T.textMuted }
+              }
+            >
               {s}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── 거래 목록 ──────────────────────────────────────────────────── */}
+      {/* 거래 목록 */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
         {filtered.length > 0 ? (
           <div className="p-4 pb-20 space-y-4">
             {grouped.map(([ym, txs]) => (
               <section key={ym}>
-                <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: T.textMuted }}>
                   {ymLabel(ym)}
                 </h2>
-                <div className="rounded-2xl bg-white shadow-sm border border-slate-100 divide-y divide-slate-50 overflow-hidden">
-                  {txs.map(t => (
-                    <TxRow key={t.id} tx={t}
-                      onEdit={() => openEdit(t)}
-                      onDelete={() => deleteTransaction(t.id)}
-                    />
+                <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>
+                  {txs.map((t, i) => (
+                    <div key={t.id} style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}>
+                      <TxRow tx={t}
+                        onEdit={() => openEdit(t)}
+                        onDelete={() => deleteTransaction(t.id)}
+                      />
+                    </div>
                   ))}
                 </div>
               </section>
@@ -650,8 +712,9 @@ export default function Transactions() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl">📋</div>
-            <p className="text-[15px] font-semibold text-slate-600">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+              style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>📋</div>
+            <p className="text-[15px] font-semibold" style={{ color: T.textPrimary }}>
               {search
                 ? `'${search}' 검색 결과 없음`
                 : sideFilter !== '전체'
@@ -659,7 +722,7 @@ export default function Transactions() {
                   : '거래 내역이 없습니다'}
             </p>
             {!search && (
-              <p className="text-[13px] text-slate-400 leading-relaxed">
+              <p className="text-[13px] leading-relaxed" style={{ color: T.textMuted }}>
                 + 버튼을 눌러 거래를 추가해보세요
               </p>
             )}
@@ -667,14 +730,14 @@ export default function Transactions() {
         )}
       </div>
 
-      {/* ── 플로팅 버튼 ────────────────────────────────────────────────── */}
+      {/* 플로팅 버튼 */}
       <button
         onClick={openAdd}
         aria-label="거래 추가"
-        className="absolute bottom-4 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl shadow-blue-300 flex items-center justify-center text-3xl font-light active:scale-95 transition-transform z-30 leading-none"
+        className="absolute bottom-4 right-4 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-3xl font-light active:scale-95 transition-transform z-30 leading-none"
+        style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
       >+</button>
 
-      {/* ── 바텀 시트 ─────────────────────────────────────────────────── */}
       {modalOpen && (
         <AddEditModal
           tx={editTx}

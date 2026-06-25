@@ -8,6 +8,7 @@ import usePriceStore from '../store/usePriceStore'
 import useAuthStore from '../store/useAuthStore'
 import { migrateToCloud, loadFromCloud, clearAllCloudData } from '../services/cloudSync'
 import { supabase } from '../lib/supabase'
+import { T } from '../theme'
 
 const APP_VERSION = '1.0.0'
 
@@ -15,10 +16,10 @@ const APP_VERSION = '1.0.0'
 function Section({ title, children }) {
   return (
     <section>
-      <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
+      <h2 className="text-[11px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: T.textMuted }}>
         {title}
       </h2>
-      <div className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>
         {children}
       </div>
     </section>
@@ -31,16 +32,16 @@ function Row({ icon, label, value, color, onClick, chevron = false, danger = fal
     <button
       onClick={onClick}
       disabled={!onClick}
-      className={`w-full flex items-center justify-between px-4 py-3.5 ${onClick ? 'active:bg-slate-50' : ''} transition-colors`}
+      className={`w-full flex items-center justify-between px-4 py-3.5 ${onClick ? 'active:opacity-70' : ''} transition-opacity`}
     >
       <div className="flex items-center gap-3">
         <span className="text-lg leading-none">{icon}</span>
-        <span className={`text-[13px] font-semibold ${danger ? 'text-red-500' : 'text-slate-700'}`}>{label}</span>
+        <span className="text-[13px] font-semibold" style={{ color: danger ? T.red : T.textPrimary }}>{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        {value && <span className={`text-[12px] ${color ?? 'text-slate-400'}`}>{value}</span>}
+        {value && <span className="text-[12px]" style={{ color: color ?? T.textMuted }}>{value}</span>}
         {chevron && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-slate-300">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: T.textMuted }}>
             <path d="M9 18l6-6-6-6" />
           </svg>
         )}
@@ -66,7 +67,6 @@ export default function Settings() {
   const priceErrors = usePriceStore((s) => s.priceErrors)
   const [migrateLoading, setMigrateLoading] = useState(false)
 
-  // ① 목표 설정
   const [goalInput, setGoalInput] = useState(String(settings.dividendGoalKrw))
 
   function saveGoal() {
@@ -76,7 +76,6 @@ export default function Settings() {
     pushToast('배당 목표가 저장되었습니다', 'success')
   }
 
-  // ② 환율 설정
   const [usdInput, setUsdInput] = useState(
     settings.fxRates.USD > 0 ? String(settings.fxRates.USD) : ''
   )
@@ -96,7 +95,6 @@ export default function Settings() {
     }
   }
 
-  // ③ 데이터 관리
   const [confirmReset, setConfirmReset] = useState(false)
 
   function handleExport() {
@@ -129,7 +127,6 @@ export default function Settings() {
         if (!Array.isArray(data.transactions) || !Array.isArray(data.cashFlows)) {
           throw new Error('올바른 백업 파일이 아닙니다')
         }
-        // Zustand persist 포맷으로 localStorage에 직접 기록 후 새로고침
         const holdings = calcHoldings(data.transactions)
         localStorage.setItem('transactions-v2', JSON.stringify({
           state: { transactions: data.transactions, holdings },
@@ -152,7 +149,6 @@ export default function Settings() {
       }
     }
     reader.readAsText(file)
-    // input 초기화 (같은 파일 재선택 허용)
     fileInputRef.current.value = ''
   }
 
@@ -186,24 +182,25 @@ export default function Settings() {
     }
   }
 
-  const inpCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-blue-400 transition-colors'
-  const lblCls = 'block text-[11px] font-semibold text-slate-500 mb-1.5'
+  const inpStyle = { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }
+  const lblCls   = 'block text-[11px] font-semibold mb-1.5'
 
   const fxUpdated = settings.fxRatesUpdatedAt
     ? new Date(settings.fxRatesUpdatedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : null
 
   return (
-    <div className="p-4 pb-10 space-y-4">
+    <div className="p-4 pb-10 space-y-4" style={{ backgroundColor: T.bg }}>
 
       {/* 계정 */}
       {user && (
         <Section title="계정">
           <div className="px-4 py-3 flex items-center justify-between">
-            <span className="text-[12px] text-slate-500">{user.email}</span>
+            <span className="text-[12px]" style={{ color: T.textMuted }}>{user.email}</span>
             <button
               onClick={handleLogout}
-              className="text-[12px] font-semibold text-red-500 active:opacity-70"
+              className="text-[12px] font-semibold active:opacity-70"
+              style={{ color: T.red }}
             >
               로그아웃
             </button>
@@ -211,11 +208,11 @@ export default function Settings() {
         </Section>
       )}
 
-      {/* ① 목표 설정 */}
+      {/* 목표 설정 */}
       <Section title="목표 설정">
         <div className="px-4 py-4 space-y-3">
           <div>
-            <label className={lblCls}>월 배당 목표금액</label>
+            <label className={lblCls} style={{ color: T.textMuted }}>월 배당 목표금액</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
@@ -223,16 +220,17 @@ export default function Settings() {
                   inputMode="numeric"
                   value={goalInput}
                   onChange={(e) => setGoalInput(e.target.value)}
-                  className={inpCls}
+                  className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                  style={inpStyle}
                   placeholder="10000000"
                 />
               </div>
-              <span className="flex items-center text-[13px] text-slate-500 shrink-0">원</span>
+              <span className="flex items-center text-[13px] shrink-0" style={{ color: T.textMuted }}>원</span>
             </div>
             {(() => {
               const v = parseInt(goalInput) || 0
               return v > 0 ? (
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] mt-1" style={{ color: T.textMuted }}>
                   연 {Math.round(v * 12).toLocaleString('ko-KR')}원 · 일 {Math.round(v / 30).toLocaleString('ko-KR')}원
                 </p>
               ) : null
@@ -240,65 +238,62 @@ export default function Settings() {
           </div>
           <button
             onClick={saveGoal}
-            className="w-full py-2.5 bg-blue-600 text-white text-[13px] font-bold rounded-xl active:opacity-80"
+            className="w-full py-2.5 text-[13px] font-bold rounded-xl active:opacity-80"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
           >
             저장
           </button>
         </div>
       </Section>
 
-      {/* ② 환율 설정 */}
+      {/* 환율 설정 */}
       <Section title="환율 설정 (수동)">
         <div className="px-4 py-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lblCls}>USD / KRW</label>
+              <label className={lblCls} style={{ color: T.textMuted }}>USD / KRW</label>
               <input
                 type="number"
                 inputMode="decimal"
                 value={usdInput}
                 onChange={(e) => setUsdInput(e.target.value)}
                 placeholder="1380"
-                className={inpCls}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle}
               />
             </div>
             <div>
-              <label className={lblCls}>JPY / KRW</label>
+              <label className={lblCls} style={{ color: T.textMuted }}>JPY / KRW</label>
               <input
                 type="number"
                 inputMode="decimal"
                 value={jpyInput}
                 onChange={(e) => setJpyInput(e.target.value)}
                 placeholder="9.5"
-                className={inpCls}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle}
               />
             </div>
           </div>
           <button
             onClick={saveFxRates}
-            className="w-full py-2.5 bg-blue-600 text-white text-[13px] font-bold rounded-xl active:opacity-80"
+            className="w-full py-2.5 text-[13px] font-bold rounded-xl active:opacity-80"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
           >
             저장
           </button>
-          <p className="text-[11px] text-slate-400 text-center">
+          <p className="text-[11px] text-center" style={{ color: T.textMuted }}>
             현재가 새로고침 시 사용됩니다
             {fxUpdated && <span className="ml-1">· 최종 조회 {fxUpdated}</span>}
           </p>
         </div>
       </Section>
 
-      {/* ③ 데이터 관리 */}
+      {/* 데이터 관리 */}
       <Section title="데이터 관리">
-        {/* 내보내기 */}
-        <Row
-          icon="📤"
-          label="백업 다운로드 (JSON)"
-          chevron
-          onClick={handleExport}
-        />
+        <Row icon="📤" label="백업 다운로드 (JSON)" chevron onClick={handleExport} />
 
-        {/* 가져오기 */}
-        <div className="border-t border-slate-50">
+        <div style={{ borderTop: `1px solid ${T.divider}` }}>
           <Row
             icon="📥"
             label="파일에서 복원 (JSON)"
@@ -314,84 +309,86 @@ export default function Settings() {
           />
         </div>
 
-        {/* 초기화 */}
-        <div className="border-t border-slate-50">
+        <div style={{ borderTop: `1px solid ${T.divider}` }}>
           {confirmReset ? (
             <div className="px-4 py-3 space-y-2">
-              <p className="text-[12px] text-red-500 font-semibold text-center">
+              <p className="text-[12px] font-semibold text-center" style={{ color: T.red }}>
                 모든 거래기록·가계부·설정이 삭제됩니다. 계속하시겠습니까?
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setConfirmReset(false)}
-                  className="flex-1 py-2.5 bg-slate-100 text-slate-600 text-[12px] font-bold rounded-xl active:opacity-80"
+                  className="flex-1 py-2.5 text-[12px] font-bold rounded-xl active:opacity-80"
+                  style={{ backgroundColor: T.inputBg, color: T.textPrimary }}
                 >
                   취소
                 </button>
                 <button
                   onClick={handleReset}
-                  className="flex-1 py-2.5 bg-red-500 text-white text-[12px] font-bold rounded-xl active:opacity-80"
+                  className="flex-1 py-2.5 text-[12px] font-bold rounded-xl active:opacity-80 text-white"
+                  style={{ backgroundColor: T.red }}
                 >
                   전체 삭제 확인
                 </button>
               </div>
             </div>
           ) : (
-            <Row
-              icon="🗑️"
-              label="전체 데이터 초기화"
-              danger
-              onClick={() => setConfirmReset(true)}
-            />
+            <Row icon="🗑️" label="전체 데이터 초기화" danger onClick={() => setConfirmReset(true)} />
           )}
         </div>
       </Section>
 
-      {/* ③-b 가격 조회 오류 */}
+      {/* 가격 조회 오류 */}
       {Object.keys(priceErrors).length > 0 && (
         <Section title="가격 조회 오류">
           <div className="px-4 py-4 space-y-2">
             {Object.entries(priceErrors).map(([ticker, reason]) => (
-              <div key={ticker} className="flex items-start justify-between gap-2 bg-amber-50 rounded-xl px-3 py-2.5">
+              <div
+                key={ticker}
+                className="flex items-start justify-between gap-2 rounded-xl px-3 py-2.5"
+                style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: `1px solid ${T.amber}` }}
+              >
                 <div className="min-w-0">
-                  <span className="text-[12px] font-bold text-amber-700">{ticker}</span>
-                  <p className="text-[11px] text-amber-600 break-all">{reason}</p>
+                  <span className="text-[12px] font-bold" style={{ color: T.amber }}>{ticker}</span>
+                  <p className="text-[11px] break-all" style={{ color: T.amber }}>{reason}</p>
                 </div>
               </div>
             ))}
-            <p className="text-[11px] text-slate-400 text-center">
+            <p className="text-[11px] text-center" style={{ color: T.textMuted }}>
               대시보드 새로고침 버튼으로 재시도하거나, 환율 설정에서 수동으로 입력하세요
             </p>
           </div>
         </Section>
       )}
 
-      {/* ④ 데이터 동기화 */}
+      {/* 데이터 동기화 */}
       <Section title="데이터 동기화 (Supabase)">
         <div className="px-4 py-4 space-y-3">
-          {/* 연결 상태 */}
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-slate-500">연결 상태</span>
-            <span className={`text-[12px] font-semibold ${isConfigured ? 'text-emerald-600' : 'text-slate-400'}`}>
+            <span className="text-[12px]" style={{ color: T.textMuted }}>연결 상태</span>
+            <span className="text-[12px] font-semibold" style={{ color: isConfigured ? T.green : T.textMuted }}>
               {isConfigured ? (isSyncing ? '동기화 중…' : '연결됨') : '미설정'}
             </span>
           </div>
           {lastSyncAt && (
             <div className="flex items-center justify-between">
-              <span className="text-[12px] text-slate-500">마지막 동기화</span>
-              <span className="text-[12px] text-slate-400">
+              <span className="text-[12px]" style={{ color: T.textMuted }}>마지막 동기화</span>
+              <span className="text-[12px]" style={{ color: T.textMuted }}>
                 {lastSyncAt.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
           )}
           {syncError && (
-            <div className="flex items-start justify-between gap-2 bg-red-50 rounded-xl px-3 py-2.5">
-              <span className="text-[11px] text-red-500 flex-1">{syncError}</span>
-              <button onClick={clearError} className="text-[11px] text-red-400 shrink-0">닫기</button>
+            <div
+              className="flex items-start justify-between gap-2 rounded-xl px-3 py-2.5"
+              style={{ backgroundColor: 'rgba(224,82,82,0.08)', border: `1px solid ${T.red}` }}
+            >
+              <span className="text-[11px] flex-1" style={{ color: T.red }}>{syncError}</span>
+              <button onClick={clearError} className="text-[11px] shrink-0" style={{ color: T.red }}>닫기</button>
             </div>
           )}
           {!isConfigured && (
-            <p className="text-[11px] text-slate-400 text-center">
+            <p className="text-[11px] text-center" style={{ color: T.textMuted }}>
               .env에 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY를 설정하면 활성화됩니다
             </p>
           )}
@@ -400,14 +397,16 @@ export default function Settings() {
               <button
                 onClick={handleMigrate}
                 disabled={migrateLoading || isSyncing}
-                className="w-full py-2.5 bg-blue-600 text-white text-[13px] font-bold rounded-xl active:opacity-80 disabled:opacity-50"
+                className="w-full py-2.5 text-[13px] font-bold rounded-xl active:opacity-80 disabled:opacity-50"
+                style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
               >
                 {migrateLoading ? '업로드 중…' : '로컬 → 클라우드 업로드'}
               </button>
               <button
                 onClick={handleLoadCloud}
                 disabled={isSyncing}
-                className="w-full py-2.5 bg-slate-100 text-slate-700 text-[13px] font-bold rounded-xl active:opacity-80 disabled:opacity-50"
+                className="w-full py-2.5 text-[13px] font-bold rounded-xl active:opacity-80 disabled:opacity-50"
+                style={{ backgroundColor: T.inputBg, color: T.textPrimary }}
               >
                 클라우드에서 불러오기
               </button>
@@ -416,10 +415,10 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* ⑤ 앱 정보 */}
+      {/* 앱 정보 */}
       <Section title="앱 정보">
         <Row icon="ℹ️" label="버전" value={`v${APP_VERSION}`} />
-        <div className="border-t border-slate-50">
+        <div style={{ borderTop: `1px solid ${T.divider}` }}>
           <Row
             icon="🏠"
             label="홈 화면에 추가"

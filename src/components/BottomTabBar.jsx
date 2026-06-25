@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { T } from '../theme'
 
 const tabs = [
   {
@@ -124,31 +125,30 @@ const tabs = [
 
 export default function BottomTabBar() {
   return (
-    <nav className="shrink-0 bg-white border-t border-slate-100 z-50">
+    <nav
+      className="shrink-0 border-t z-50"
+      style={{ backgroundColor: T.tabBg, borderColor: T.gold }}
+    >
       <div className="flex items-center justify-around h-16 px-1 pb-safe">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-150 ${
-                isActive ? 'text-blue-600' : 'text-slate-400'
-              }`
-            }
+            className="flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-150"
+            style={({ isActive }) => ({ color: isActive ? T.tabActive : T.tabInactive })}
           >
             {({ isActive }) => (
               <>
                 <span className="relative">
                   {tab.icon(isActive)}
                   {isActive && (
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-600" />
+                    <span
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                      style={{ backgroundColor: T.tabActive }}
+                    />
                   )}
                 </span>
-                <span
-                  className={`text-[9px] font-medium leading-none ${
-                    isActive ? 'text-blue-600' : 'text-slate-400'
-                  }`}
-                >
+                <span className="text-[9px] font-medium leading-none">
                   {tab.label}
                 </span>
               </>

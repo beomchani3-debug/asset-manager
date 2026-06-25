@@ -4,6 +4,7 @@ import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
 import { calcPnL } from '../utils/pnl'
+import { T, MARKET_COLOR } from '../theme'
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const fmtKrw = (n) => `${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
@@ -31,25 +32,22 @@ const MARKETS = ['전체', '미국', '국내', '일본', '코인']
 const SORTS   = ['평가금액순', '수익률순', '종목명순']
 
 const MARKET_BADGE_STYLE = {
-  '미국': 'bg-blue-50 text-blue-600',
-  '국내': 'bg-emerald-50 text-emerald-600',
-  '일본': 'bg-red-50 text-red-500',
-  '코인': 'bg-amber-50 text-amber-600',
-}
-
-const MARKET_COLOR = {
-  '미국': '#3B82F6',
-  '국내': '#10B981',
-  '일본': '#EF4444',
-  '코인': '#F59E0B',
+  '미국': { backgroundColor: '#0A1525', color: T.blue   },
+  '국내': { backgroundColor: '#0D1A0D', color: T.green  },
+  '일본': { backgroundColor: '#200A0A', color: T.red    },
+  '코인': { backgroundColor: '#1A1400', color: T.gold   },
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
 function Badge({ label, isMarket = false }) {
+  const style = isMarket
+    ? (MARKET_BADGE_STYLE[label] ?? { backgroundColor: T.inputBg, color: T.textMuted })
+    : { backgroundColor: T.inputBg, color: T.textMuted }
   return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-      isMarket ? (MARKET_BADGE_STYLE[label] ?? 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-500'
-    }`}>
+    <span
+      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+      style={style}
+    >
       {label}
     </span>
   )
@@ -108,12 +106,15 @@ function TreeTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 text-[12px] leading-relaxed pointer-events-none">
-      <p className="font-bold text-slate-800">{d.name}</p>
-      <p className="text-slate-500">{d.ticker} · {d.market}</p>
-      <p className="font-semibold text-slate-700">{fmtKrw(d.size)}</p>
+    <div
+      className="rounded-xl shadow-lg px-3 py-2.5 text-[12px] leading-relaxed pointer-events-none"
+      style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, color: T.textPrimary }}
+    >
+      <p className="font-bold">{d.name}</p>
+      <p style={{ color: T.textMuted }}>{d.ticker} · {d.market}</p>
+      <p className="font-semibold">{fmtKrw(d.size)}</p>
       {d.hasPrice && (
-        <p className={d.pnlPct >= 0 ? 'text-blue-600 font-semibold' : 'text-red-500 font-semibold'}>
+        <p style={{ color: d.pnlPct >= 0 ? T.green : T.red, fontWeight: 600 }}>
           {d.pnlPct >= 0 ? '+' : ''}{d.pnlPct.toFixed(2)}%
         </p>
       )}
@@ -129,13 +130,14 @@ function HoldingCard({ holding, onClick, realizedPnl }) {
   return (
     <div
       onClick={onClick}
-      className="rounded-2xl bg-white shadow-sm border border-slate-100 p-4 active:bg-slate-50 transition-colors cursor-pointer"
+      className="rounded-2xl p-4 active:opacity-80 transition-opacity cursor-pointer"
+      style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="text-[15px] font-bold text-slate-900 leading-snug">{holding.assetName}</span>
-            <span className="text-xs font-mono text-slate-400">{holding.ticker}</span>
+            <span className="text-[15px] font-bold leading-snug" style={{ color: T.textPrimary }}>{holding.assetName}</span>
+            <span className="text-xs font-mono" style={{ color: T.textMuted }}>{holding.ticker}</span>
           </div>
           <div className="flex items-center gap-1 flex-wrap">
             <Badge label={holding.market} isMarket />
@@ -145,31 +147,37 @@ function HoldingCard({ holding, onClick, realizedPnl }) {
         </div>
         <div className="shrink-0 ml-2">
           {hasPrice ? (
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-              up ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'
-            }`}>
+            <span
+              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: up ? 'rgba(76,175,80,0.15)' : 'rgba(224,82,82,0.15)', color: up ? T.green : T.red }}
+            >
               {fmtPct(pnlPct)}
             </span>
           ) : (
-            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">미조회</span>
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+            >
+              미조회
+            </span>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 py-3 border-y border-slate-50 mb-3">
+      <div className="grid grid-cols-3 py-3 mb-3" style={{ borderTop: `1px solid ${T.divider}`, borderBottom: `1px solid ${T.divider}` }}>
         <div>
-          <p className="text-[10px] text-slate-400 mb-0.5">현재가</p>
-          <p className="text-xs font-semibold text-slate-800 tabular-nums">
+          <p className="text-[10px] mb-0.5" style={{ color: T.textMuted }}>현재가</p>
+          <p className="text-xs font-semibold tabular-nums" style={{ color: T.textPrimary }}>
             {hasPrice ? fmtPrice(priceEntry.price, holding.currency) : '—'}
           </p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] text-slate-400 mb-0.5">보유수량</p>
-          <p className="text-xs font-semibold text-slate-800 tabular-nums">{fmtQty(holding.quantity)}</p>
+          <p className="text-[10px] mb-0.5" style={{ color: T.textMuted }}>보유수량</p>
+          <p className="text-xs font-semibold tabular-nums" style={{ color: T.textPrimary }}>{fmtQty(holding.quantity)}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-slate-400 mb-0.5">평균단가</p>
-          <p className="text-xs font-semibold text-slate-800 tabular-nums">
+          <p className="text-[10px] mb-0.5" style={{ color: T.textMuted }}>평균단가</p>
+          <p className="text-xs font-semibold tabular-nums" style={{ color: T.textPrimary }}>
             {fmtPrice(holding.avgPrice, holding.currency)}
           </p>
         </div>
@@ -177,23 +185,26 @@ function HoldingCard({ holding, onClick, realizedPnl }) {
 
       {hasPrice ? (
         <div className="flex items-baseline justify-between">
-          <span className="text-base font-bold text-slate-900 tabular-nums">{fmtKrw(marketValue)}</span>
-          <span className={`text-sm font-semibold tabular-nums ${up ? 'text-blue-600' : 'text-red-500'}`}>
+          <span className="text-base font-bold tabular-nums" style={{ color: T.goldLight }}>{fmtKrw(marketValue)}</span>
+          <span className="text-sm font-semibold tabular-nums" style={{ color: up ? T.green : T.red }}>
             {fmtKrwSigned(unrealizedPnl)}
           </span>
         </div>
       ) : (
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
+          <span
+            className="text-xs font-medium px-2.5 py-1 rounded-lg"
+            style={{ color: T.amber, backgroundColor: 'rgba(245,158,11,0.1)', border: `1px solid ${T.amber}` }}
+          >
             현재가 조회 실패 · 수동 입력 필요
           </span>
-          <span className="text-xs text-slate-400 tabular-nums">원금 {fmtKrw(holding.principal)}</span>
+          <span className="text-xs tabular-nums" style={{ color: T.textMuted }}>원금 {fmtKrw(holding.principal)}</span>
         </div>
       )}
       {realizedPnl !== 0 && (
-        <div className="mt-2 pt-2 border-t border-slate-50 flex items-center justify-between">
-          <span className="text-[10px] text-slate-400">실현손익</span>
-          <span className={`text-xs font-semibold tabular-nums ${realizedPnl > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+        <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: `1px solid ${T.divider}` }}>
+          <span className="text-[10px]" style={{ color: T.textMuted }}>실현손익</span>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: realizedPnl > 0 ? T.green : T.red }}>
             {fmtKrwSigned(realizedPnl)}
           </span>
         </div>
@@ -251,25 +262,26 @@ function DetailModal({ holding, transactions, onClose }) {
   return (
     <div className="fixed inset-0 z-50">
       <div
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
         onClick={close}
       />
       <div
         className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px]
-                   bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto no-scrollbar
+                   rounded-t-3xl max-h-[85vh] overflow-y-auto no-scrollbar
                    transition-transform duration-300 ease-out ${show ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, borderBottom: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-slate-200" />
+          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: T.goldDim }} />
         </div>
 
         <div className="px-5 pt-2 pb-10">
           <div className="flex items-start justify-between mb-5">
             <div className="min-w-0">
-              <h3 className="text-xl font-bold text-slate-900 mb-1.5 truncate">{holding.assetName}</h3>
+              <h3 className="text-xl font-bold mb-1.5 truncate" style={{ color: T.goldLight }}>{holding.assetName}</h3>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-mono text-slate-400">{holding.ticker}</span>
+                <span className="text-xs font-mono" style={{ color: T.textMuted }}>{holding.ticker}</span>
                 <Badge label={holding.market} isMarket />
                 {holding.sector && <Badge label={holding.sector} />}
                 <Badge label={holding.broker} />
@@ -278,17 +290,21 @@ function DetailModal({ holding, transactions, onClose }) {
             <button
               onClick={close}
               aria-label="닫기"
-              className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm shrink-0 ml-3 active:opacity-70"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ml-3 active:opacity-70"
+              style={{ backgroundColor: T.inputBg, color: T.textMuted }}
             >
               ✕
             </button>
           </div>
 
-          <div className="rounded-2xl bg-slate-50 p-4 mb-5">
+          <div className="rounded-2xl p-4 mb-5" style={{ backgroundColor: T.inputBg, border: `1px solid ${T.inputBorder}` }}>
             <div className="flex items-center justify-between mb-2.5">
-              <p className="text-xs font-semibold text-slate-600">현재가 수동 입력</p>
+              <p className="text-xs font-semibold" style={{ color: T.textPrimary }}>현재가 수동 입력</p>
               {hasManualPrice && (
-                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  style={{ color: T.amber, backgroundColor: 'rgba(245,158,11,0.1)' }}
+                >
                   수동가 적용 · {fmtPrice(manualPrice, holding.currency)}
                 </span>
               )}
@@ -300,76 +316,89 @@ function DetailModal({ holding, transactions, onClose }) {
                 value={priceInput}
                 onChange={(e) => setPriceInput(e.target.value)}
                 placeholder={`현재가 입력 (${holding.currency})`}
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 transition-colors"
+                className="flex-1 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#C9A84C] transition-colors"
+                style={{ backgroundColor: T.card, borderColor: T.inputBorder, color: T.textPrimary }}
               />
               <button
                 onClick={handleSavePrice}
                 disabled={!priceInput || parseFloat(priceInput) <= 0}
-                className="px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl disabled:opacity-40 active:opacity-80 transition-opacity"
+                className="px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-40 active:opacity-80 transition-opacity"
+                style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
               >
                 저장
               </button>
             </div>
           </div>
 
+          {/* 매수 이력 */}
           <div className="mb-5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: T.textMuted }}>
               매수 이력 ({buyHistory.length}건)
             </p>
             {buyHistory.length > 0 ? (
-              <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="grid grid-cols-5 px-3 py-2 bg-slate-50 text-[10px] font-semibold text-slate-400">
+              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.inputBorder}` }}>
+                <div className="grid grid-cols-5 px-3 py-2 text-[10px] font-semibold" style={{ backgroundColor: T.inputBg, color: T.textMuted }}>
                   {['날짜', '수량', '단가', '환율', '원화'].map((h, i) => (
                     <span key={h} className={i > 0 ? 'text-right' : ''}>{h}</span>
                   ))}
                 </div>
                 {buyHistory.map((tx) => (
-                  <div key={tx.id} className="grid grid-cols-5 px-3 py-2.5 border-t border-slate-50 text-[11px] tabular-nums">
-                    <span className="text-slate-500">{tx.date.slice(5)}</span>
-                    <span className="text-right text-slate-700">{fmtQty(tx.quantity)}</span>
-                    <span className="text-right text-slate-700">{fmtPrice(tx.price, tx.currency)}</span>
-                    <span className="text-right text-slate-400">
+                  <div
+                    key={tx.id}
+                    className="grid grid-cols-5 px-3 py-2.5 text-[11px] tabular-nums"
+                    style={{ borderTop: `1px solid ${T.divider}` }}
+                  >
+                    <span style={{ color: T.textMuted }}>{tx.date.slice(5)}</span>
+                    <span className="text-right" style={{ color: T.textPrimary }}>{fmtQty(tx.quantity)}</span>
+                    <span className="text-right" style={{ color: T.textPrimary }}>{fmtPrice(tx.price, tx.currency)}</span>
+                    <span className="text-right" style={{ color: T.textMuted }}>
                       {tx.currency === 'KRW' ? '—' : Math.round(tx.fxRate).toLocaleString('ko-KR')}
                     </span>
-                    <span className="text-right text-slate-700">
+                    <span className="text-right" style={{ color: T.textPrimary }}>
                       {Math.round(tx.krwAmount).toLocaleString('ko-KR')}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-sm text-slate-400 py-3">매수 이력 없음</p>
+              <p className="text-center text-sm py-3" style={{ color: T.textMuted }}>매수 이력 없음</p>
             )}
           </div>
 
+          {/* 매도/실현손익 이력 */}
           {realizedHistory.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: T.textMuted }}>
                 매도 이력 / 실현손익 ({realizedHistory.length}건)
               </p>
-              <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="grid grid-cols-4 px-3 py-2 bg-slate-50 text-[10px] font-semibold text-slate-400">
+              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.inputBorder}` }}>
+                <div className="grid grid-cols-4 px-3 py-2 text-[10px] font-semibold" style={{ backgroundColor: T.inputBg, color: T.textMuted }}>
                   {['날짜', '수량', '수익금', '실현손익'].map((h, i) => (
                     <span key={h} className={i > 0 ? 'text-right' : ''}>{h}</span>
                   ))}
                 </div>
                 {realizedHistory.map((r) => (
-                  <div key={r.id} className="grid grid-cols-4 px-3 py-2.5 border-t border-slate-50 text-[11px] tabular-nums">
-                    <span className="text-slate-500">{r.date.slice(5)}</span>
-                    <span className="text-right text-slate-700">{fmtQty(r.qty)}</span>
-                    <span className="text-right text-slate-700">
+                  <div
+                    key={r.id}
+                    className="grid grid-cols-4 px-3 py-2.5 text-[11px] tabular-nums"
+                    style={{ borderTop: `1px solid ${T.divider}` }}
+                  >
+                    <span style={{ color: T.textMuted }}>{r.date.slice(5)}</span>
+                    <span className="text-right" style={{ color: T.textPrimary }}>{fmtQty(r.qty)}</span>
+                    <span className="text-right" style={{ color: T.textPrimary }}>
                       {Math.round(r.proceedsKrw).toLocaleString('ko-KR')}
                     </span>
-                    <span className={`text-right font-semibold ${r.pnl >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                    <span className="text-right font-semibold" style={{ color: r.pnl >= 0 ? T.green : T.red }}>
                       {r.pnl >= 0 ? '+' : '−'}{Math.round(Math.abs(r.pnl)).toLocaleString('ko-KR')}
                     </span>
                   </div>
                 ))}
-                <div className="grid grid-cols-4 px-3 py-2.5 border-t border-slate-200 bg-slate-50 text-[11px] tabular-nums">
-                  <span className="font-semibold text-slate-600 col-span-3">총 실현손익</span>
-                  <span className={`text-right font-bold ${
-                    realizedHistory.reduce((s, r) => s + r.pnl, 0) >= 0 ? 'text-blue-600' : 'text-red-500'
-                  }`}>
+                <div
+                  className="grid grid-cols-4 px-3 py-2.5 text-[11px] tabular-nums"
+                  style={{ borderTop: `1px solid ${T.gold}`, backgroundColor: T.inputBg }}
+                >
+                  <span className="font-semibold col-span-3" style={{ color: T.textPrimary }}>총 실현손익</span>
+                  <span className="text-right font-bold" style={{ color: realizedHistory.reduce((s, r) => s + r.pnl, 0) >= 0 ? T.green : T.red }}>
                     {(() => {
                       const total = realizedHistory.reduce((s, r) => s + r.pnl, 0)
                       return `${total >= 0 ? '+' : '−'}${Math.round(Math.abs(total)).toLocaleString('ko-KR')}`
@@ -380,33 +409,41 @@ function DetailModal({ holding, transactions, onClose }) {
             </div>
           )}
 
+          {/* 배당 이력 */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: T.textMuted }}>
               배당 이력 ({divHistory.length}건)
             </p>
             {divHistory.length > 0 ? (
-              <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="grid grid-cols-2 px-3 py-2 bg-slate-50 text-[10px] font-semibold text-slate-400">
+              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.inputBorder}` }}>
+                <div className="grid grid-cols-2 px-3 py-2 text-[10px] font-semibold" style={{ backgroundColor: T.inputBg, color: T.textMuted }}>
                   <span>날짜</span>
                   <span className="text-right">수령액 (원화)</span>
                 </div>
                 {divHistory.map((tx) => (
-                  <div key={tx.id} className="grid grid-cols-2 px-3 py-2.5 border-t border-slate-50 text-[11px] tabular-nums">
-                    <span className="text-slate-500">{tx.date}</span>
-                    <span className="text-right text-emerald-600 font-semibold">
+                  <div
+                    key={tx.id}
+                    className="grid grid-cols-2 px-3 py-2.5 text-[11px] tabular-nums"
+                    style={{ borderTop: `1px solid ${T.divider}` }}
+                  >
+                    <span style={{ color: T.textMuted }}>{tx.date}</span>
+                    <span className="text-right font-semibold" style={{ color: T.green }}>
                       {Math.round(tx.krwAmount).toLocaleString('ko-KR')}원
                     </span>
                   </div>
                 ))}
-                <div className="grid grid-cols-2 px-3 py-2.5 border-t border-slate-200 bg-slate-50 text-[11px] tabular-nums">
-                  <span className="font-semibold text-slate-600">합계</span>
-                  <span className="text-right font-bold text-emerald-600">
+                <div
+                  className="grid grid-cols-2 px-3 py-2.5 text-[11px] tabular-nums"
+                  style={{ borderTop: `1px solid ${T.gold}`, backgroundColor: T.inputBg }}
+                >
+                  <span className="font-semibold" style={{ color: T.textPrimary }}>합계</span>
+                  <span className="text-right font-bold" style={{ color: T.green }}>
                     {Math.round(divHistory.reduce((s, t) => s + t.krwAmount, 0)).toLocaleString('ko-KR')}원
                   </span>
                 </div>
               </div>
             ) : (
-              <p className="text-center text-sm text-slate-400 py-3">배당 이력 없음</p>
+              <p className="text-center text-sm py-3" style={{ color: T.textMuted }}>배당 이력 없음</p>
             )}
           </div>
         </div>
@@ -461,7 +498,6 @@ export default function Portfolio() {
     return { totalMV: mv, totalPrin: prin, totalPnl: mv - prin }
   }, [enriched])
 
-  // 트리맵 데이터: 크기순 정렬 (큰 항목이 상단 좌측에 배치)
   const treemapData = useMemo(() =>
     displayed
       .filter((h) => h.marketValue > 0)
@@ -478,22 +514,24 @@ export default function Portfolio() {
   )
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ backgroundColor: T.bg }}>
 
       {/* ── 필터 바 ──────────────────────────────────────────────────────── */}
-      <div className="shrink-0 bg-white border-b border-slate-100 px-4 pt-3 pb-2.5 space-y-2.5">
-        {/* 시장 필터 + 정렬 */}
+      <div
+        className="shrink-0 px-4 pt-3 pb-2.5 space-y-2.5 border-b"
+        style={{ backgroundColor: T.card, borderColor: T.gold }}
+      >
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1">
             {MARKETS.map((m) => (
               <button
                 key={m}
                 onClick={() => setMarketFilter(m)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  marketFilter === m
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                    : 'bg-slate-100 text-slate-500'
-                }`}
+                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+                style={marketFilter === m
+                  ? { backgroundColor: T.gold, color: '#0A0A0A' }
+                  : { backgroundColor: T.inputBg, color: T.textMuted }
+                }
               >
                 {m}
               </button>
@@ -502,21 +540,23 @@ export default function Portfolio() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="shrink-0 text-[11px] text-slate-600 bg-slate-100 rounded-lg px-2 py-1.5 outline-none border-0"
+            className="shrink-0 text-[11px] rounded-lg px-2 py-1.5 outline-none border-0"
+            style={{ backgroundColor: T.inputBg, color: T.textMuted }}
           >
             {SORTS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
 
-        {/* 뷰 전환 */}
         <div className="flex gap-1.5">
           {['카드', '트리맵'].map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-3 py-1 rounded-lg text-[12px] font-semibold transition-colors ${
-                view === v ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'
-              }`}
+              className="px-3 py-1 rounded-lg text-[12px] font-semibold transition-colors"
+              style={view === v
+                ? { backgroundColor: T.goldDim, color: T.goldLight }
+                : { backgroundColor: T.inputBg, color: T.textMuted }
+              }
             >
               {v === '카드' ? '⊞ 카드' : '▦ 트리맵'}
             </button>
@@ -538,15 +578,16 @@ export default function Portfolio() {
             ))
           ) : holdings.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16 gap-3 text-center">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl">📊</div>
-              <p className="text-[15px] font-semibold text-slate-600">보유 종목이 없습니다</p>
-              <p className="text-sm text-slate-400 leading-relaxed">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+                style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>📊</div>
+              <p className="text-[15px] font-semibold" style={{ color: T.textPrimary }}>보유 종목이 없습니다</p>
+              <p className="text-sm leading-relaxed" style={{ color: T.textMuted }}>
                 거래기록에서 매수를 추가하면<br />여기에 종목이 표시됩니다
               </p>
             </div>
           ) : (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-slate-400">해당 시장의 보유 종목이 없습니다</p>
+              <p className="text-sm" style={{ color: T.textMuted }}>해당 시장의 보유 종목이 없습니다</p>
             </div>
           )}
         </div>
@@ -554,12 +595,11 @@ export default function Portfolio() {
         <div className="flex-1 overflow-hidden p-3">
           {treemapData.length > 0 ? (
             <>
-              {/* 시장별 범례 */}
               <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
                 {Object.entries(MARKET_COLOR).map(([market, color]) => (
                   <div key={market} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-                    <span className="text-[11px] text-slate-500">{market}</span>
+                    <span className="text-[11px]" style={{ color: T.textMuted }}>{market}</span>
                   </div>
                 ))}
               </div>
@@ -578,24 +618,32 @@ export default function Portfolio() {
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl">📊</div>
-              <p className="text-[15px] font-semibold text-slate-600">표시할 종목이 없습니다</p>
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+                style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>📊</div>
+              <p className="text-[15px] font-semibold" style={{ color: T.textPrimary }}>표시할 종목이 없습니다</p>
             </div>
           )}
         </div>
       )}
 
       {/* ── 하단 요약 바 ─────────────────────────────────────────────────── */}
-      <div className="shrink-0 bg-white border-t border-slate-100 px-4 py-3">
-        <div className="grid grid-cols-3 divide-x divide-slate-100">
+      <div
+        className="shrink-0 border-t px-4 py-3"
+        style={{ backgroundColor: T.card, borderColor: T.gold }}
+      >
+        <div className="grid grid-cols-3">
           {[
-            { label: '평가금액', value: fmtKrw(totalMV),        color: 'text-slate-800'                                 },
-            { label: '투자원금', value: fmtKrw(totalPrin),      color: 'text-slate-800'                                 },
-            { label: '총 손익',  value: fmtKrwSigned(totalPnl), color: totalPnl >= 0 ? 'text-blue-600' : 'text-red-500' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="text-center px-2 first:pl-0 last:pr-0">
-              <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
-              <p className={`text-sm font-bold tabular-nums ${color}`}>{value}</p>
+            { label: '평가금액', value: fmtKrw(totalMV),        color: T.goldLight                           },
+            { label: '투자원금', value: fmtKrw(totalPrin),      color: T.textPrimary                         },
+            { label: '총 손익',  value: fmtKrwSigned(totalPnl), color: totalPnl >= 0 ? T.green : T.red       },
+          ].map(({ label, value, color }, i) => (
+            <div
+              key={label}
+              className="text-center px-2 first:pl-0 last:pr-0"
+              style={i > 0 ? { borderLeft: `1px solid ${T.divider}` } : {}}
+            >
+              <p className="text-[10px] mb-0.5" style={{ color: T.textMuted }}>{label}</p>
+              <p className="text-sm font-bold tabular-nums" style={{ color }}>{value}</p>
             </div>
           ))}
         </div>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import useCashFlowStore from '../store/useCashFlowStore'
 import useSettingsStore from '../store/useSettingsStore'
+import { T } from '../theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_TABS  = ['수입', '고정비', '변동지출']
@@ -23,10 +24,10 @@ const CAT_ICON = {
 const catIcon = (cat) => CAT_ICON[cat] ?? '📌'
 
 const STYLE = {
-  수입:    { card: 'bg-blue-50',    label: 'text-blue-400',    amt: 'text-blue-600',   bar: 'bg-blue-500',   badge: 'bg-blue-100 text-blue-700'   },
-  고정비:  { card: 'bg-orange-50',  label: 'text-orange-400',  amt: 'text-orange-600', bar: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700'},
-  변동지출:{ card: 'bg-red-50',     label: 'text-red-400',     amt: 'text-red-500',    bar: 'bg-red-500',    badge: 'bg-red-100 text-red-600'     },
-  용돈지출:{ card: 'bg-violet-50',  label: 'text-violet-400',  amt: 'text-violet-600', bar: 'bg-violet-500', badge: 'bg-violet-100 text-violet-700'},
+  수입:    { card: { backgroundColor: 'rgba(76,175,80,0.08)' },  label: { color: T.green }, amt: { color: T.green }, bar: { backgroundColor: T.green }, badge: { backgroundColor: 'rgba(76,175,80,0.12)', color: T.green }   },
+  고정비:  { card: { backgroundColor: 'rgba(91,155,213,0.08)' }, label: { color: T.blue  }, amt: { color: T.blue  }, bar: { backgroundColor: T.blue  }, badge: { backgroundColor: 'rgba(91,155,213,0.12)', color: T.blue  }  },
+  변동지출:{ card: { backgroundColor: 'rgba(224,82,82,0.08)' },  label: { color: T.red   }, amt: { color: T.red   }, bar: { backgroundColor: T.red   }, badge: { backgroundColor: 'rgba(224,82,82,0.12)', color: T.red   }  },
+  용돈지출:{ card: { backgroundColor: 'rgba(201,168,76,0.08)' }, label: { color: T.gold  }, amt: { color: T.gold  }, bar: { backgroundColor: T.gold  }, badge: { backgroundColor: 'rgba(201,168,76,0.12)', color: T.gold  } },
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ function groupByDate(list) {
   return Object.entries(map).sort((a, b) => (b[0] > a[0] ? 1 : -1))
 }
 
-// ─── CfRow (탭 → 편집 / 스와이프 → 삭제) ─────────────────────────────────────
+// ─── CfRow ────────────────────────────────────────────────────────────────────
 function CfRow({ cf, onEdit, onDelete }) {
   const [revealed, setRevealed] = useState(false)
   const startX    = useRef(0)
@@ -88,7 +89,8 @@ function CfRow({ cf, onEdit, onDelete }) {
   return (
     <div className="relative overflow-hidden select-none">
       <button
-        className="absolute right-0 inset-y-0 w-[68px] bg-red-500 flex flex-col items-center justify-center gap-0.5 active:bg-red-600"
+        className="absolute right-0 inset-y-0 w-[68px] flex flex-col items-center justify-center gap-0.5 active:opacity-80"
+        style={{ backgroundColor: T.red }}
         onClick={(e) => { e.stopPropagation(); onDelete() }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -98,20 +100,21 @@ function CfRow({ cf, onEdit, onDelete }) {
         <span className="text-[10px] font-bold text-white">삭제</span>
       </button>
       <div
-        className={`relative bg-white transition-transform duration-200 ${revealed ? '-translate-x-[68px]' : 'translate-x-0'}`}
+        className={`relative transition-transform duration-200 ${revealed ? '-translate-x-[68px]' : 'translate-x-0'}`}
+        style={{ backgroundColor: T.card }}
         onTouchStart={tStart} onTouchMove={tMove} onTouchEnd={tEnd} onClick={handleClick}
       >
         <div className="flex items-center gap-3 px-4 py-3.5">
-          <div className={`w-9 h-9 rounded-xl ${s.card} flex items-center justify-center text-lg shrink-0`}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0" style={s.card}>
             {catIcon(cf.category)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{cf.category}</p>
-            {cf.memo && <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">{cf.memo}</p>}
+            <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: T.textPrimary }}>{cf.category}</p>
+            {cf.memo && <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: T.textMuted }}>{cf.memo}</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-[13px] font-bold tabular-nums ${s.amt}`}>{sign}{fmtW(cf.amount)}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-slate-300">
+            <span className="text-[13px] font-bold tabular-nums" style={s.amt}>{sign}{fmtW(cf.amount)}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: T.textMuted }}>
               <path d="M9 18l6-6-6-6" />
             </svg>
           </div>
@@ -163,29 +166,43 @@ function CategoryEditSheet({ current, onSave, onClose }) {
     setEditIdx(null)
   }
 
-  const inp = 'flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-blue-400 transition-colors'
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={close}>
-      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`relative w-full max-w-[430px] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 flex flex-col max-h-[85vh] ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`relative w-full max-w-[430px] rounded-t-3xl shadow-2xl transition-transform duration-300 flex flex-col max-h-[85vh] ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, borderBottom: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-slate-200" />
+          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: T.goldDim }} />
         </div>
         <div className="px-5 pt-2 pb-3 flex items-center justify-between shrink-0">
-          <h3 className="text-[17px] font-bold text-slate-900">카테고리 편집</h3>
+          <h3 className="text-[17px] font-bold" style={{ color: T.goldLight }}>카테고리 편집</h3>
           <div className="flex items-center gap-2">
-            <button onClick={save} className="px-4 py-1.5 bg-blue-600 text-white text-[13px] font-bold rounded-xl active:opacity-80">저장</button>
-            <button onClick={close} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm active:opacity-70">✕</button>
+            <button
+              onClick={save}
+              className="px-4 py-1.5 text-[13px] font-bold rounded-xl active:opacity-80"
+              style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+            >저장</button>
+            <button
+              onClick={close}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm active:opacity-70"
+              style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+            >✕</button>
           </div>
         </div>
-        <div className="flex border-b border-slate-100 shrink-0 px-5 gap-4">
+        <div className="flex border-b shrink-0 px-5 gap-4" style={{ borderColor: T.divider }}>
           {TYPE_TABS.map((t) => (
-            <button key={t} onClick={() => { setActiveType(t); setEditIdx(null); setNewCat('') }}
-              className={`pb-2.5 text-[13px] font-bold transition-colors ${activeType === t ? 'text-slate-800 border-b-2 border-slate-800' : 'text-slate-400'}`}>
+            <button
+              key={t}
+              onClick={() => { setActiveType(t); setEditIdx(null); setNewCat('') }}
+              className="pb-2.5 text-[13px] font-bold transition-colors"
+              style={activeType === t
+                ? { color: T.goldLight, borderBottom: `2px solid ${T.gold}` }
+                : { color: T.textMuted }
+              }
+            >
               {t}
             </button>
           ))}
@@ -194,23 +211,31 @@ function CategoryEditSheet({ current, onSave, onClose }) {
           {cats[activeType].map((cat, idx) => (
             <div key={idx} className="flex items-center gap-2">
               {editIdx === idx ? (
-                <input autoFocus value={editVal}
+                <input
+                  autoFocus value={editVal}
                   onChange={(e) => setEditVal(e.target.value)}
                   onBlur={confirmEdit}
                   onKeyDown={(e) => { if (e.key === 'Enter') confirmEdit() }}
-                  className="flex-1 bg-slate-50 border border-blue-400 rounded-xl px-3 py-2.5 text-[13px] outline-none"
+                  className="flex-1 border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                  style={{ backgroundColor: T.inputBg, borderColor: T.gold, color: T.textPrimary }}
                 />
               ) : (
-                <button onClick={() => cat !== '기타' && startEdit(idx)}
-                  className="flex-1 text-left flex items-center gap-2.5 bg-slate-50 rounded-xl px-3 py-2.5 active:bg-slate-100">
+                <button
+                  onClick={() => cat !== '기타' && startEdit(idx)}
+                  className="flex-1 text-left flex items-center gap-2.5 rounded-xl px-3 py-2.5 active:opacity-80"
+                  style={{ backgroundColor: T.inputBg }}
+                >
                   <span className="text-base leading-none">{catIcon(cat)}</span>
-                  <span className="text-[13px] font-semibold text-slate-700">{cat}</span>
-                  {cat !== '기타' && <span className="ml-auto text-[11px] text-slate-400 shrink-0">탭하여 수정</span>}
+                  <span className="text-[13px] font-semibold" style={{ color: T.textPrimary }}>{cat}</span>
+                  {cat !== '기타' && <span className="ml-auto text-[11px] shrink-0" style={{ color: T.textMuted }}>탭하여 수정</span>}
                 </button>
               )}
               {cat !== '기타' && (
-                <button onClick={() => deleteCat(idx)}
-                  className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 active:opacity-70 shrink-0">
+                <button
+                  onClick={() => deleteCat(idx)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-70 shrink-0"
+                  style={{ backgroundColor: 'rgba(224,82,82,0.1)', color: T.red }}
+                >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
@@ -219,12 +244,21 @@ function CategoryEditSheet({ current, onSave, onClose }) {
             </div>
           ))}
         </div>
-        <div className="shrink-0 px-5 py-3 border-t border-slate-100 flex gap-2">
-          <input value={newCat} onChange={(e) => setNewCat(e.target.value)}
+        <div className="shrink-0 px-5 py-3 flex gap-2" style={{ borderTop: `1px solid ${T.divider}` }}>
+          <input
+            value={newCat}
+            onChange={(e) => setNewCat(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') addCat() }}
-            placeholder="새 카테고리 이름" className={inp} />
-          <button onClick={addCat} disabled={!newCat.trim()}
-            className="px-4 py-2.5 bg-blue-600 text-white text-[13px] font-bold rounded-xl disabled:opacity-40 active:opacity-80 shrink-0">
+            placeholder="새 카테고리 이름"
+            className="flex-1 border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+            style={{ backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }}
+          />
+          <button
+            onClick={addCat}
+            disabled={!newCat.trim()}
+            className="px-4 py-2.5 text-[13px] font-bold rounded-xl disabled:opacity-40 active:opacity-80 shrink-0"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+          >
             추가
           </button>
         </div>
@@ -233,11 +267,10 @@ function CategoryEditSheet({ current, onSave, onClose }) {
   )
 }
 
-// ─── CfModal (추가 / 수정 공통) ───────────────────────────────────────────────
+// ─── CfModal ──────────────────────────────────────────────────────────────────
 function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
   const isEdit = !!initialCf
 
-  // 수정 시: 기존 카테고리가 목록에 없으면 '기타' + customCat으로 처리
   const initType    = initialCf?.type ?? '수입'
   const initCatList = initType === '용돈지출'
     ? (categories['변동지출'] ?? [])
@@ -257,7 +290,6 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
   const [memo,       setMemo]       = useState(initialCf?.memo ?? '')
   const [confirmDel, setConfirmDel] = useState(false)
 
-  // 타입을 직접 변경할 때만 카테고리 초기화 (마운트 시에는 건드리지 않음)
   const isFirstMount = useRef(true)
   useEffect(() => {
     if (isFirstMount.current) { isFirstMount.current = false; return }
@@ -279,26 +311,39 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
   const cats    = type === '용돈지출' ? categories['변동지출'] : (categories[type] ?? [])
   const s       = STYLE[type] ?? STYLE['수입']
   const canSave = !!date && parseFloat(amount) > 0 && (category !== '기타' || customCat.trim())
-  const inp     = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-blue-400 transition-colors'
+
+  const inpStyle = { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }
+
+  const typeButtonColor = (t) => {
+    if (t === '수입')    return T.green
+    if (t === '고정비')  return T.blue
+    if (t === '변동지출') return T.red
+    return T.gold
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={close}>
-      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`relative w-full max-w-[430px] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 max-h-[92vh] overflow-y-auto no-scrollbar ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`relative w-full max-w-[430px] rounded-t-3xl shadow-2xl transition-transform duration-300 max-h-[92vh] overflow-y-auto no-scrollbar ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, borderBottom: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white z-10">
-          <div className="w-10 h-1 rounded-full bg-slate-200" />
+        <div className="flex justify-center pt-3 pb-1 sticky top-0 z-10" style={{ backgroundColor: T.card }}>
+          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: T.goldDim }} />
         </div>
 
         <div className="px-5 pt-2 pb-12 space-y-4">
           {/* 헤더 */}
           <div className="flex items-center justify-between">
-            <h3 className="text-[17px] font-bold text-slate-900">
+            <h3 className="text-[17px] font-bold" style={{ color: T.goldLight }}>
               {isEdit ? '내역 수정' : '내역 추가'}
             </h3>
-            <button onClick={close} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm active:opacity-70">✕</button>
+            <button
+              onClick={close}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm active:opacity-70"
+              style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+            >✕</button>
           </div>
 
           {/* 유형 탭 */}
@@ -306,21 +351,31 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
             <div className="flex gap-2">
               {['수입', '고정비', '변동지출'].map((t) => {
                 const on = type === t
-                const bg = t === '수입' ? 'bg-blue-600' : t === '고정비' ? 'bg-orange-500' : 'bg-red-500'
                 return (
-                  <button key={t} onClick={() => setType(t)}
-                    className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-colors ${on ? `${bg} text-white` : 'bg-slate-100 text-slate-500'}`}>
+                  <button
+                    key={t}
+                    onClick={() => setType(t)}
+                    className="flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-colors"
+                    style={on
+                      ? { backgroundColor: typeButtonColor(t), color: '#0A0A0A' }
+                      : { backgroundColor: T.inputBg, color: T.textMuted }
+                    }
+                  >
                     {t}
                   </button>
                 )
               })}
             </div>
-            <button onClick={() => setType('용돈지출')}
-              className={`w-full py-2.5 rounded-xl text-[12px] font-bold transition-colors flex items-center justify-center gap-2 ${
-                type === '용돈지출' ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
+            <button
+              onClick={() => setType('용돈지출')}
+              className="w-full py-2.5 rounded-xl text-[12px] font-bold transition-colors flex items-center justify-center gap-2"
+              style={type === '용돈지출'
+                ? { backgroundColor: T.gold, color: '#0A0A0A' }
+                : { backgroundColor: T.inputBg, color: T.textMuted }
+              }
+            >
               <span>💵 용돈지출</span>
-              <span className={`text-[10px] font-normal ${type === '용돈지출' ? 'text-violet-200' : 'text-slate-400'}`}>
+              <span className="text-[10px] font-normal" style={{ color: type === '용돈지출' ? '#0A0A0A' : T.textMuted }}>
                 합계 미포함 · 용돈 예산에서 차감
               </span>
             </button>
@@ -329,25 +384,34 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
           {/* 날짜 + 금액 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">날짜</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+              <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>날짜</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle} />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">금액 (원)</label>
+              <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>금액 (원)</label>
               <input type="number" inputMode="decimal" value={amount}
-                onChange={(e) => setAmount(e.target.value)} placeholder="0" className={inp} />
+                onChange={(e) => setAmount(e.target.value)} placeholder="0"
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle} />
             </div>
           </div>
 
           {/* 카테고리 */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">카테고리</label>
+            <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>카테고리</label>
             <div className="flex flex-wrap gap-2">
               {cats.map((c) => (
-                <button key={c} onClick={() => setCategory(c)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
-                    category === c ? `${s.badge} border-transparent` : 'bg-slate-50 text-slate-500 border-slate-200'
-                  }`}>
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors"
+                  style={category === c
+                    ? { ...s.badge, borderColor: 'transparent' }
+                    : { backgroundColor: T.inputBg, color: T.textMuted, borderColor: T.inputBorder }
+                  }
+                >
                   <span>{catIcon(c)}</span>
                   <span>{c}</span>
                 </button>
@@ -355,19 +419,27 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
             </div>
             {category === '기타' && (
               <input value={customCat} onChange={(e) => setCustomCat(e.target.value)}
-                placeholder="카테고리 직접 입력" className={`${inp} mt-2`} />
+                placeholder="카테고리 직접 입력"
+                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors mt-2"
+                style={inpStyle} />
             )}
           </div>
 
           {/* 메모 */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">메모 (선택)</label>
-            <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="" className={inp} />
+            <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>메모 (선택)</label>
+            <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder=""
+              className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+              style={inpStyle} />
           </div>
 
           {/* 저장 버튼 */}
-          <button onClick={handleSave} disabled={!canSave}
-            className="w-full py-3.5 bg-blue-600 text-white text-[14px] font-bold rounded-2xl disabled:opacity-40 active:opacity-80 transition-opacity">
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            className="w-full py-3.5 text-[14px] font-bold rounded-2xl disabled:opacity-40 active:opacity-80 transition-opacity"
+            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+          >
             {isEdit ? '수정 완료' : '저장'}
           </button>
 
@@ -375,18 +447,27 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
           {isEdit && (
             confirmDel ? (
               <div className="flex gap-2">
-                <button onClick={() => setConfirmDel(false)}
-                  className="flex-1 py-3 bg-slate-100 text-slate-600 text-[13px] font-semibold rounded-2xl active:opacity-80">
+                <button
+                  onClick={() => setConfirmDel(false)}
+                  className="flex-1 py-3 text-[13px] font-semibold rounded-2xl active:opacity-80"
+                  style={{ backgroundColor: T.inputBg, color: T.textPrimary }}
+                >
                   취소
                 </button>
-                <button onClick={() => { onDelete(initialCf.id); close() }}
-                  className="flex-1 py-3 bg-red-500 text-white text-[13px] font-semibold rounded-2xl active:opacity-80">
+                <button
+                  onClick={() => { onDelete(initialCf.id); close() }}
+                  className="flex-1 py-3 text-[13px] font-semibold rounded-2xl active:opacity-80 text-white"
+                  style={{ backgroundColor: T.red }}
+                >
                   삭제 확인
                 </button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDel(true)}
-                className="w-full py-3 bg-slate-50 text-red-400 text-[13px] font-semibold rounded-2xl border border-slate-100 active:opacity-80">
+              <button
+                onClick={() => setConfirmDel(true)}
+                className="w-full py-3 text-[13px] font-semibold rounded-2xl border active:opacity-80"
+                style={{ backgroundColor: 'transparent', color: T.red, borderColor: T.inputBorder }}
+              >
                 내역 삭제
               </button>
             )
@@ -402,7 +483,7 @@ export default function CashFlow() {
   const [ym,           setYm]           = useState(currentYM())
   const [catTab,       setCatTab]       = useState('고정비')
   const [modalOpen,    setModalOpen]    = useState(false)
-  const [editingCf,    setEditingCf]    = useState(null)  // null = 추가, object = 수정
+  const [editingCf,    setEditingCf]    = useState(null)
   const [editCatsOpen, setEditCatsOpen] = useState(false)
 
   const cashFlows        = useCashFlowStore((s) => s.cashFlows)
@@ -423,7 +504,6 @@ export default function CashFlow() {
     [monthFlows]
   )
 
-  // 메인 요약
   const summary = useMemo(() => {
     const income   = mainFlows.filter(c => c.type === '수입').reduce((s, c) => s + c.amount, 0)
     const fixed    = mainFlows.filter(c => c.type === '고정비').reduce((s, c) => s + c.amount, 0)
@@ -431,7 +511,6 @@ export default function CashFlow() {
     return { income, fixed, variable, net: income - fixed - variable }
   }, [mainFlows])
 
-  // 용돈 예산
   const pocketBudget = useMemo(
     () => mainFlows.filter(c => c.type === '고정비' && c.category === '용돈').reduce((s, c) => s + c.amount, 0),
     [mainFlows]
@@ -441,7 +520,6 @@ export default function CashFlow() {
   const pocketLeft  = pocketBudget - pocketSpent
   const hasPocket   = pocketBudget > 0 || pocketSpent > 0
 
-  // 카테고리 분석
   const catBreakdown = useMemo(() => {
     const rows  = mainFlows.filter(c => c.type === catTab)
     const total = rows.reduce((s, c) => s + c.amount, 0)
@@ -474,29 +552,41 @@ export default function CashFlow() {
   }
 
   const netPos = summary.net >= 0
-  const netCls = netPos ? 'text-blue-600' : 'text-red-500'
 
   return (
-    <div className="relative flex flex-col h-full">
+    <div className="relative flex flex-col h-full" style={{ backgroundColor: T.bg }}>
 
-      {/* ── 월 네비게이션 ────────────────────────────────────────────────── */}
-      <div className="shrink-0 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
-        <button onClick={() => setYm(shiftMonth(ym, -1))}
-          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:opacity-70">
+      {/* ── 월 네비게이션 */}
+      <div
+        className="shrink-0 border-b px-4 py-3 flex items-center justify-between"
+        style={{ backgroundColor: T.card, borderColor: T.gold }}
+      >
+        <button
+          onClick={() => setYm(shiftMonth(ym, -1))}
+          className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-70"
+          style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <span className="text-[15px] font-bold text-slate-800">{ymDisplay(ym)}</span>
+        <span className="text-[15px] font-bold" style={{ color: T.goldLight }}>{ymDisplay(ym)}</span>
         <div className="flex items-center gap-2">
-          <button onClick={() => setYm(shiftMonth(ym, 1))}
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:opacity-70">
+          <button
+            onClick={() => setYm(shiftMonth(ym, 1))}
+            className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-70"
+            style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
-          <button onClick={() => setEditCatsOpen(true)} title="카테고리 편집"
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:opacity-70">
+          <button
+            onClick={() => setEditCatsOpen(true)}
+            title="카테고리 편집"
+            className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-70"
+            style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+          >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
@@ -505,19 +595,20 @@ export default function CashFlow() {
         </div>
       </div>
 
-      {/* ── 스크롤 영역 ─────────────────────────────────────────────────── */}
+      {/* ── 스크롤 영역 */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
         {monthFlows.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl">📒</div>
-            <p className="text-[15px] font-semibold text-slate-600">이번달 내역이 없어요</p>
-            <p className="text-[13px] text-slate-400">추가해보세요!</p>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+              style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>📒</div>
+            <p className="text-[15px] font-semibold" style={{ color: T.textPrimary }}>이번달 내역이 없어요</p>
+            <p className="text-[13px]" style={{ color: T.textMuted }}>추가해보세요!</p>
           </div>
         ) : (
           <div className="p-4 pb-20 space-y-4">
 
-            {/* ── 요약 카드 ── */}
-            <div className="rounded-2xl bg-white shadow-sm border border-slate-100 p-4 space-y-3">
+            {/* ── 요약 카드 */}
+            <div className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { type: '수입',    val: summary.income   },
@@ -526,66 +617,72 @@ export default function CashFlow() {
                 ].map(({ type: t, val }) => {
                   const st = STYLE[t]
                   return (
-                    <div key={t} className={`rounded-xl ${st.card} p-2.5`}>
-                      <p className={`text-[10px] font-semibold ${st.label} mb-0.5`}>{t}</p>
-                      <p className={`text-[12px] font-bold ${st.amt} tabular-nums leading-tight`}>
+                    <div key={t} className="rounded-xl p-2.5" style={st.card}>
+                      <p className="text-[10px] font-semibold mb-0.5" style={st.label}>{t}</p>
+                      <p className="text-[12px] font-bold tabular-nums leading-tight" style={st.amt}>
                         {Math.round(val).toLocaleString('ko-KR')}원
                       </p>
                     </div>
                   )
                 })}
               </div>
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                <span className="text-[12px] font-semibold text-slate-500">순현금흐름</span>
-                <span className={`text-[20px] font-extrabold tabular-nums ${netCls}`}>
+              <div className="flex items-center justify-between pt-1" style={{ borderTop: `1px solid ${T.divider}` }}>
+                <span className="text-[12px] font-semibold" style={{ color: T.textMuted }}>순현금흐름</span>
+                <span className="text-[20px] font-extrabold tabular-nums" style={{ color: netPos ? T.green : T.red }}>
                   {netPos ? '+' : '−'}{fmtW(summary.net)}
                 </span>
               </div>
             </div>
 
-            {/* ── 용돈 현황 카드 ── */}
+            {/* ── 용돈 현황 카드 */}
             {hasPocket && (
-              <div className="rounded-2xl bg-white shadow-sm border border-violet-100 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-violet-50 border-b border-violet-100">
+              <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-b"
+                  style={{ backgroundColor: 'rgba(201,168,76,0.06)', borderColor: T.goldDim }}
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-base">💵</span>
-                    <span className="text-[14px] font-bold text-violet-800">용돈 현황</span>
-                    <span className="text-[11px] text-violet-400">합계 미포함</span>
+                    <span className="text-[14px] font-bold" style={{ color: T.goldLight }}>용돈 현황</span>
+                    <span className="text-[11px]" style={{ color: T.textMuted }}>합계 미포함</span>
                   </div>
-                  <span className={`text-[13px] font-bold tabular-nums ${pocketLeft >= 0 ? 'text-violet-700' : 'text-red-500'}`}>
+                  <span className="text-[13px] font-bold tabular-nums" style={{ color: pocketLeft >= 0 ? T.gold : T.red }}>
                     잔액 {pocketLeft >= 0 ? '+' : '−'}{Math.abs(Math.round(pocketLeft)).toLocaleString('ko-KR')}원
                   </span>
                 </div>
-                <div className="grid grid-cols-2 divide-x divide-slate-100">
+                <div className="grid grid-cols-2" style={{ borderBottom: `1px solid ${T.divider}` }}>
                   <div className="px-4 py-3">
-                    <p className="text-[11px] text-slate-400 mb-0.5">이번달 예산</p>
-                    <p className="text-[15px] font-bold text-slate-700 tabular-nums">
+                    <p className="text-[11px] mb-0.5" style={{ color: T.textMuted }}>이번달 예산</p>
+                    <p className="text-[15px] font-bold tabular-nums" style={{ color: T.textPrimary }}>
                       {pocketBudget > 0 ? fmtW(pocketBudget) : '미설정'}
                     </p>
                   </div>
-                  <div className="px-4 py-3">
-                    <p className="text-[11px] text-slate-400 mb-0.5">사용</p>
-                    <p className="text-[15px] font-bold text-violet-600 tabular-nums">{fmtW(pocketSpent)}</p>
+                  <div className="px-4 py-3" style={{ borderLeft: `1px solid ${T.divider}` }}>
+                    <p className="text-[11px] mb-0.5" style={{ color: T.textMuted }}>사용</p>
+                    <p className="text-[15px] font-bold tabular-nums" style={{ color: T.gold }}>{fmtW(pocketSpent)}</p>
                   </div>
                 </div>
                 {pocketBudget > 0 && (
-                  <div className="px-4 pb-3">
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="px-4 pb-3 pt-2">
+                    <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: T.divider }}>
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${pocketLeft >= 0 ? 'bg-violet-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(100, (pocketSpent / pocketBudget) * 100)}%` }}
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, (pocketSpent / pocketBudget) * 100)}%`,
+                          backgroundColor: pocketLeft >= 0 ? T.gold : T.red,
+                        }}
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 text-right mt-1 tabular-nums">
+                    <p className="text-[11px] text-right mt-1 tabular-nums" style={{ color: T.textMuted }}>
                       {Math.round((pocketSpent / pocketBudget) * 100)}% 사용
                     </p>
                   </div>
                 )}
                 {pocketGrouped.length > 0 ? (
-                  <div className="border-t border-slate-100">
+                  <div style={{ borderTop: `1px solid ${T.divider}` }}>
                     {pocketGrouped.map(([date, items]) => (
                       <div key={date}>
-                        <p className="text-[10px] font-semibold text-slate-400 px-4 pt-2.5 pb-1">
+                        <p className="text-[10px] font-semibold px-4 pt-2.5 pb-1" style={{ color: T.textMuted }}>
                           {date.replace(/-/g, '.')}
                         </p>
                         {items.map((cf) => (
@@ -597,51 +694,62 @@ export default function CashFlow() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-[12px] text-slate-400 py-3 border-t border-slate-100">
+                  <p className="text-center text-[12px] py-3" style={{ color: T.textMuted, borderTop: `1px solid ${T.divider}` }}>
                     용돈 내역을 추가해보세요
                   </p>
                 )}
               </div>
             )}
 
-            {/* ── 카테고리 분석 ── */}
+            {/* ── 카테고리 분석 */}
             {mainFlows.length > 0 && (
-              <div className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
-                <div className="flex border-b border-slate-100">
+              <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>
+                <div className="flex" style={{ borderBottom: `1px solid ${T.divider}` }}>
                   {['고정비', '변동지출'].map((t) => (
-                    <button key={t} onClick={() => setCatTab(t)}
-                      className={`flex-1 py-2.5 text-[12px] font-bold transition-colors ${
-                        catTab === t ? 'text-slate-800 border-b-2 border-slate-800' : 'text-slate-400'
-                      }`}>
+                    <button
+                      key={t}
+                      onClick={() => setCatTab(t)}
+                      className="flex-1 py-2.5 text-[12px] font-bold transition-colors"
+                      style={catTab === t
+                        ? { color: T.goldLight, borderBottom: `2px solid ${T.gold}` }
+                        : { color: T.textMuted }
+                      }
+                    >
                       {t}
                     </button>
                   ))}
                 </div>
                 {catBreakdown.length === 0 ? (
-                  <p className="text-center text-[12px] text-slate-400 py-5">{catTab} 내역 없음</p>
+                  <p className="text-center text-[12px] py-5" style={{ color: T.textMuted }}>{catTab} 내역 없음</p>
                 ) : (
-                  <div className="divide-y divide-slate-50">
-                    {catBreakdown.map(({ cat, amt, pct }) => {
+                  <div>
+                    {catBreakdown.map(({ cat, amt, pct }, i) => {
                       const st = STYLE[catTab]
                       return (
-                        <div key={cat} className="px-4 py-3">
+                        <div
+                          key={cat}
+                          className="px-4 py-3"
+                          style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}
+                        >
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-2">
                               <span className="text-base leading-none">{catIcon(cat)}</span>
-                              <span className="text-[13px] font-semibold text-slate-700">{cat}</span>
+                              <span className="text-[13px] font-semibold" style={{ color: T.textPrimary }}>{cat}</span>
                             </div>
                             <div className="text-right">
-                              <span className={`text-[13px] font-bold tabular-nums ${st.amt}`}>
+                              <span className="text-[13px] font-bold tabular-nums" style={st.amt}>
                                 {Math.round(amt).toLocaleString('ko-KR')}원
                               </span>
-                              <span className="text-[11px] text-slate-400 ml-1.5 tabular-nums">
+                              <span className="text-[11px] ml-1.5 tabular-nums" style={{ color: T.textMuted }}>
                                 {pct.toFixed(0)}%
                               </span>
                             </div>
                           </div>
-                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full ${st.bar} rounded-full transition-all duration-500`}
-                              style={{ width: `${pct}%` }} />
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: T.divider }}>
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${pct}%`, ...st.bar }}
+                            />
                           </div>
                         </div>
                       )
@@ -651,19 +759,21 @@ export default function CashFlow() {
               </div>
             )}
 
-            {/* ── 메인 내역 리스트 ── */}
+            {/* ── 메인 내역 리스트 */}
             {grouped.length > 0 && (
               <div className="space-y-4">
                 {grouped.map(([date, items]) => (
                   <section key={date}>
-                    <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: T.textMuted }}>
                       {date.replace(/-/g, '.')}
                     </h2>
-                    <div className="rounded-2xl bg-white shadow-sm border border-slate-100 divide-y divide-slate-50 overflow-hidden">
-                      {items.map((cf) => (
-                        <CfRow key={cf.id} cf={cf}
-                          onEdit={() => openEdit(cf)}
-                          onDelete={() => deleteCashFlow(cf.id)} />
+                    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>
+                      {items.map((cf, i) => (
+                        <div key={cf.id} style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}>
+                          <CfRow cf={cf}
+                            onEdit={() => openEdit(cf)}
+                            onDelete={() => deleteCashFlow(cf.id)} />
+                        </div>
                       ))}
                     </div>
                   </section>
@@ -675,9 +785,13 @@ export default function CashFlow() {
         )}
       </div>
 
-      {/* ── 플로팅 버튼 ─────────────────────────────────────────────────── */}
-      <button onClick={openAdd} aria-label="내역 추가"
-        className="absolute bottom-4 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl shadow-blue-300 flex items-center justify-center text-3xl font-light active:scale-95 transition-transform z-30 leading-none">
+      {/* ── 플로팅 버튼 */}
+      <button
+        onClick={openAdd}
+        aria-label="내역 추가"
+        className="absolute bottom-4 right-4 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-3xl font-light active:scale-95 transition-transform z-30 leading-none"
+        style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+      >
         +
       </button>
 

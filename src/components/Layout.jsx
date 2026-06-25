@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import BottomTabBar from './BottomTabBar'
 import Toast from './Toast'
+import { T } from '../theme'
 
 const PAGE_TITLES = {
   '/dashboard':    '대시보드',
@@ -15,11 +16,22 @@ export default function Layout() {
   const title = PAGE_TITLES[pathname] ?? '내 자산관리'
 
   return (
-    <div className="w-full max-w-[430px] h-screen flex flex-col bg-slate-50 shadow-2xl overflow-hidden">
+    <div
+      className="w-full max-w-[430px] h-screen flex flex-col shadow-2xl overflow-hidden"
+      style={{ backgroundColor: T.bg }}
+    >
       {/* 상단 고정 헤더 */}
-      <header className="shrink-0 bg-white border-b border-slate-100 pt-safe z-40">
+      <header
+        className="shrink-0 border-b pt-safe z-40"
+        style={{ backgroundColor: T.card, borderColor: T.gold }}
+      >
         <div className="flex items-center justify-between h-14 px-5">
-          <h1 className="text-[17px] font-bold text-slate-900 tracking-tight">{title}</h1>
+          <h1
+            className="text-[17px] font-bold tracking-tight"
+            style={{ color: T.goldLight }}
+          >
+            {title}
+          </h1>
         </div>
       </header>
 

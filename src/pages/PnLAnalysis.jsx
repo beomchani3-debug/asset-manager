@@ -3,9 +3,9 @@ import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
 import { calcPnL } from '../utils/pnl'
+import { T, MARKET_COLOR } from '../theme'
 
 const MARKET_ORDER  = ['미국', '국내', '일본', '코인']
-const MARKET_COLOR  = { '미국': '#2563EB', '국내': '#16A34A', '일본': '#DC2626', '코인': '#CA8A04' }
 
 const fmtKrw = (n) => `${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
 const fmtSigned = (n) =>
@@ -13,10 +13,10 @@ const fmtSigned = (n) =>
 const fmtPct = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`
 
 function PnLValue({ value, percent = false, size = 'base' }) {
-  const colorCls = value === 0 ? 'text-slate-500' : value > 0 ? 'text-blue-600' : 'text-red-500'
-  const sizeCls  = { sm: 'text-sm', base: 'text-base', lg: 'text-lg', xl: 'text-xl' }[size] ?? 'text-base'
+  const color   = value === 0 ? T.textMuted : value > 0 ? T.green : T.red
+  const sizeCls = { sm: 'text-sm', base: 'text-base', lg: 'text-lg', xl: 'text-xl' }[size] ?? 'text-base'
   return (
-    <span className={`font-bold tabular-nums ${colorCls} ${sizeCls}`}>
+    <span className={`font-bold tabular-nums ${sizeCls}`} style={{ color }}>
       {percent ? fmtPct(value) : fmtSigned(value)}
     </span>
   )
@@ -24,7 +24,10 @@ function PnLValue({ value, percent = false, size = 'base' }) {
 
 function Card({ children, className = '' }) {
   return (
-    <div className={`rounded-2xl bg-white shadow-sm border border-slate-100 ${className}`}>
+    <div
+      className={`rounded-2xl ${className}`}
+      style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}
+    >
       {children}
     </div>
   )
@@ -32,8 +35,11 @@ function Card({ children, className = '' }) {
 
 function Row({ label, value, bold = false }) {
   return (
-    <div className={`flex items-center justify-between ${bold ? 'pt-2.5 border-t border-slate-100' : ''}`}>
-      <span className={`text-xs ${bold ? 'font-semibold text-slate-700' : 'text-slate-500'}`}>{label}</span>
+    <div
+      className={`flex items-center justify-between ${bold ? 'pt-2.5' : ''}`}
+      style={bold ? { borderTop: `1px solid ${T.divider}` } : {}}
+    >
+      <span className={`text-xs ${bold ? 'font-semibold' : ''}`} style={{ color: bold ? T.textPrimary : T.textMuted }}>{label}</span>
       <PnLValue value={value} size="sm" />
     </div>
   )
@@ -47,13 +53,16 @@ function SummaryTab({ unrealized, realized, principal, marketValue, hasPriceWarn
   return (
     <div className="space-y-4">
       {hasPriceWarning && (
-        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 text-[11px] text-amber-700 leading-relaxed">
+        <div
+          className="rounded-xl px-3 py-2.5 text-[11px] leading-relaxed"
+          style={{ backgroundColor: 'rgba(245,158,11,0.1)', border: `1px solid ${T.amber}`, color: T.amber }}
+        >
           일부 종목은 현재가 조회 실패로 마지막 성공 가격 기준으로 계산됩니다.
         </div>
       )}
 
       <Card className="p-5">
-        <p className="text-xs text-slate-400 mb-1.5 text-center">총 손익</p>
+        <p className="text-xs mb-1.5 text-center" style={{ color: T.textMuted }}>총 손익</p>
         <div className="text-center mb-1">
           <PnLValue value={total} size="xl" />
         </div>
@@ -61,12 +70,12 @@ function SummaryTab({ unrealized, realized, principal, marketValue, hasPriceWarn
           <PnLValue value={returnRate} percent size="sm" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-[10px] text-slate-400 mb-1.5">미실현손익</p>
+          <div className="rounded-xl p-3" style={{ backgroundColor: T.inputBg }}>
+            <p className="text-[10px] mb-1.5" style={{ color: T.textMuted }}>미실현손익</p>
             <PnLValue value={unrealized} size="sm" />
           </div>
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-[10px] text-slate-400 mb-1.5">실현손익</p>
+          <div className="rounded-xl p-3" style={{ backgroundColor: T.inputBg }}>
+            <p className="text-[10px] mb-1.5" style={{ color: T.textMuted }}>실현손익</p>
             <PnLValue value={realized} size="sm" />
           </div>
         </div>
@@ -74,15 +83,15 @@ function SummaryTab({ unrealized, realized, principal, marketValue, hasPriceWarn
 
       <Card className="p-4 space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">투자원금</span>
-          <span className="text-xs font-semibold text-slate-800 tabular-nums">{fmtKrw(principal)}</span>
+          <span className="text-xs" style={{ color: T.textMuted }}>투자원금</span>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: T.textPrimary }}>{fmtKrw(principal)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">총 평가금액</span>
-          <span className="text-xs font-semibold text-slate-800 tabular-nums">{fmtKrw(marketValue)}</span>
+          <span className="text-xs" style={{ color: T.textMuted }}>총 평가금액</span>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: T.goldLight }}>{fmtKrw(marketValue)}</span>
         </div>
-        <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
-          <span className="text-xs font-semibold text-slate-700">수익률</span>
+        <div className="flex items-center justify-between pt-2.5" style={{ borderTop: `1px solid ${T.divider}` }}>
+          <span className="text-xs font-semibold" style={{ color: T.textPrimary }}>수익률</span>
           <PnLValue value={returnRate} percent size="sm" />
         </div>
       </Card>
@@ -98,7 +107,7 @@ function MarketTab({ byMarketUnrealized, byMarketRealized, byMarketPrincipal }) 
   ])].sort((a, b) => (MARKET_ORDER.indexOf(a) ?? 99) - (MARKET_ORDER.indexOf(b) ?? 99))
 
   if (!markets.length) {
-    return <p className="text-center text-sm text-slate-400 py-12">데이터가 없습니다</p>
+    return <p className="text-center text-sm py-12" style={{ color: T.textMuted }}>데이터가 없습니다</p>
   }
 
   return (
@@ -116,28 +125,29 @@ function MarketTab({ byMarketUnrealized, byMarketRealized, byMarketPrincipal }) 
           <Card key={market} className="p-4">
             <div className="flex items-center gap-2 mb-3.5">
               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-              <span className="text-sm font-bold text-slate-800">{market}</span>
+              <span className="text-sm font-bold" style={{ color: T.textPrimary }}>{market}</span>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-                <p className="text-[10px] text-slate-400 mb-1">투자원금</p>
-                <p className="text-xs font-semibold text-slate-800 tabular-nums">{fmtKrw(principal)}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-                <p className="text-[10px] text-slate-400 mb-1">평가금액</p>
-                <p className="text-xs font-semibold text-slate-800 tabular-nums">{fmtKrw(mv)}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-                <p className="text-[10px] text-slate-400 mb-1">미실현손익</p>
+              {[
+                { label: '투자원금', value: fmtKrw(principal) },
+                { label: '평가금액', value: fmtKrw(mv) },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl px-2.5 py-2" style={{ backgroundColor: T.inputBg }}>
+                  <p className="text-[10px] mb-1" style={{ color: T.textMuted }}>{label}</p>
+                  <p className="text-xs font-semibold tabular-nums" style={{ color: T.textPrimary }}>{value}</p>
+                </div>
+              ))}
+              <div className="rounded-xl px-2.5 py-2" style={{ backgroundColor: T.inputBg }}>
+                <p className="text-[10px] mb-1" style={{ color: T.textMuted }}>미실현손익</p>
                 <PnLValue value={unrealized} size="sm" />
               </div>
-              <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-                <p className="text-[10px] text-slate-400 mb-1">실현손익</p>
+              <div className="rounded-xl px-2.5 py-2" style={{ backgroundColor: T.inputBg }}>
+                <p className="text-[10px] mb-1" style={{ color: T.textMuted }}>실현손익</p>
                 <PnLValue value={realized} size="sm" />
               </div>
             </div>
-            <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
-              <span className="text-xs font-semibold text-slate-700">총손익</span>
+            <div className="flex items-center justify-between pt-2.5" style={{ borderTop: `1px solid ${T.divider}` }}>
+              <span className="text-xs font-semibold" style={{ color: T.textPrimary }}>총손익</span>
               <div className="flex items-center gap-2">
                 <PnLValue value={total} size="sm" />
                 <PnLValue value={returnRate} percent size="sm" />
@@ -169,7 +179,10 @@ function PeriodTab({ byMonth, byYear, totalRealized, totalUnrealized }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-[11px] text-blue-700 leading-relaxed">
+      <div
+        className="rounded-xl px-3 py-2.5 text-[11px] leading-relaxed"
+        style={{ backgroundColor: 'rgba(91,155,213,0.1)', border: `1px solid ${T.blue}`, color: T.blue }}
+      >
         미실현손익은 현재 시점 기준입니다. 기간별 미실현변화는 스냅샷 기능 추가 후 지원될 예정입니다.
       </div>
 
@@ -177,8 +190,8 @@ function PeriodTab({ byMonth, byYear, totalRealized, totalUnrealized }) {
         <Card key={label} className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-sm font-bold text-slate-800">{label}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>
+              <p className="text-sm font-bold" style={{ color: T.textPrimary }}>{label}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: T.textMuted }}>{sub}</p>
             </div>
           </div>
           <div className="space-y-2.5">
@@ -228,7 +241,7 @@ export default function PnLAnalysis() {
         byMarketUnrealized[h.market] = (byMarketUnrealized[h.market] ?? 0) + unreal
       } else {
         countNoPrice++
-        totalMarketValue += h.principal // fallback: treat as break-even
+        totalMarketValue += h.principal
       }
     }
 
@@ -245,18 +258,21 @@ export default function PnLAnalysis() {
   const TABS = ['요약', '시장별', '기간별']
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="shrink-0 bg-white border-b border-slate-100 px-4 pt-3 pb-3">
+    <div className="flex flex-col h-full" style={{ backgroundColor: T.bg }}>
+      <div
+        className="shrink-0 border-b px-4 pt-3 pb-3"
+        style={{ backgroundColor: T.card, borderColor: T.gold }}
+      >
         <div className="flex gap-1.5">
           {TABS.map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                tab === t
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                  : 'bg-slate-100 text-slate-500'
-              }`}
+              className="px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
+              style={tab === t
+                ? { backgroundColor: T.gold, color: '#0A0A0A' }
+                : { backgroundColor: T.inputBg, color: T.textMuted }
+              }
             >
               {t}
             </button>
@@ -267,8 +283,9 @@ export default function PnLAnalysis() {
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 pb-6">
         {holdings.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl">📈</div>
-            <p className="text-[15px] font-semibold text-slate-600">거래를 추가하면 손익이 분석됩니다</p>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+              style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}>📈</div>
+            <p className="text-[15px] font-semibold" style={{ color: T.textPrimary }}>거래를 추가하면 손익이 분석됩니다</p>
           </div>
         ) : tab === '요약' ? (
           <SummaryTab

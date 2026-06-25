@@ -6,6 +6,7 @@ import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
 import { usePriceService } from '../hooks/usePriceService'
 import { calcPnL } from '../utils/pnl'
+import { T, MARKET_COLOR } from '../theme'
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
 const fmtKrw = (n) => `${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
@@ -13,31 +14,32 @@ const fmtKrwSigned = (n) => `${n >= 0 ? '+' : '-'}${Math.round(Math.abs(n)).toLo
 const fmtPct = (n, signed = true) => `${signed && n >= 0 ? '+' : ''}${n.toFixed(2)}%`
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MARKET_COLOR = { '미국': '#2563EB', '국내': '#16A34A', '일본': '#DC2626', '코인': '#CA8A04' }
-
 const SIDE_STYLE = {
-  '매수': { bg: 'bg-blue-50',    text: 'text-blue-600'    },
-  '매도': { bg: 'bg-red-50',     text: 'text-red-500'     },
-  '배당': { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  '매수': { bg: '#0A1525', text: T.blue    },
+  '매도': { bg: '#200A0A', text: T.red     },
+  '배당': { bg: '#0D1A0D', text: T.green   },
 }
 
 // ─── Tiny shared components ───────────────────────────────────────────────────
 function SectionHeader({ title, action }) {
   return (
     <div className="flex items-center justify-between mb-2 px-0.5">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{title}</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: T.textMuted }}>{title}</h2>
       {action}
     </div>
   )
 }
 
 function EmptyHint({ text }) {
-  return <p className="py-7 text-center text-sm text-slate-400">{text}</p>
+  return <p className="py-7 text-center text-sm" style={{ color: T.textMuted }}>{text}</p>
 }
 
 function Card({ children, className = '' }) {
   return (
-    <div className={`rounded-2xl bg-white shadow-sm border border-slate-100 ${className}`}>
+    <div
+      className={`rounded-2xl overflow-hidden ${className}`}
+      style={{ backgroundColor: T.card, border: `1px solid ${T.gold}` }}
+    >
       {children}
     </div>
   )
@@ -81,7 +83,7 @@ export default function Dashboard() {
 
     for (const h of holdings) {
       const entry = prices[h.ticker]
-      let mv = h.principal // 현재가 없으면 원금으로 대체
+      let mv = h.principal
 
       if (entry) {
         let fx = 1
@@ -105,7 +107,6 @@ export default function Dashboard() {
   const pnlStats = useMemo(() => calcPnL(transactions), [transactions])
 
   // ── Monthly cash flow ─────────────────────────────────────────────────────
-  // cashFlows in deps triggers re-compute when data changes (getMonthlySummary is stable)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const flow    = useMemo(() => getMonthlySummary(thisYM), [cashFlows, thisYM])
   const netFlow = flow.income - flow.fixed - flow.variable
@@ -147,7 +148,6 @@ export default function Dashboard() {
     ? lastUpdatedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
     : null
 
-  // 손익 요약 계산
   const unrealizedPnl = portfolio.pnl
   const realizedPnl   = pnlStats.totalRealized
   const totalPnl      = unrealizedPnl + realizedPnl
@@ -160,24 +160,25 @@ export default function Dashboard() {
 
       {/* ① 날짜 + 새로고침 */}
       <div className="flex items-center justify-between pt-1">
-        <p className="text-sm text-slate-500 leading-snug">{todayStr}</p>
+        <p className="text-sm leading-snug" style={{ color: T.textMuted }}>{todayStr}</p>
         <div className="flex items-center gap-2 shrink-0 ml-2">
           {lastUpdatedStr && (
-            <span className="text-[11px] text-slate-400">{lastUpdatedStr} 기준</span>
+            <span className="text-[11px]" style={{ color: T.textMuted }}>{lastUpdatedStr} 기준</span>
           )}
           <button
             onClick={refreshAll}
             disabled={isLoading}
             aria-label="새로고침"
-            className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm active:opacity-70 disabled:opacity-50 transition-opacity"
+            className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-70 disabled:opacity-50 transition-opacity"
+            style={{ backgroundColor: T.card, border: `1px solid ${T.inputBorder}` }}
           >
             {isLoading ? (
-              <svg className="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: T.gold }}>
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
             ) : (
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: T.textMuted }}>
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.65-3.65M20 15a9 9 0 01-14.65 3.65" />
               </svg>
@@ -188,33 +189,37 @@ export default function Dashboard() {
 
       {/* ② 총 자산 카드 */}
       <div
-        className="rounded-2xl p-5 shadow-lg shadow-blue-100 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%)' }}
+        className="rounded-2xl p-5 shadow-lg overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1C1500 0%, #2D2000 55%, #1A1400 100%)', border: `1px solid ${T.gold}` }}
       >
-        <p className="text-sm text-blue-200 mb-1">총 평가금액</p>
+        <p className="text-sm mb-1" style={{ color: T.goldDim }}>총 평가금액</p>
         {holdings.length > 0 ? (
           <>
-            <p className="text-[2rem] font-bold text-white tracking-tight leading-none">
+            <p className="text-[2rem] font-bold tracking-tight leading-none" style={{ color: T.goldLight }}>
               {fmtKrw(portfolio.totalMarketValue)}
             </p>
             <div className="mt-3 flex items-center gap-2">
-              <span className={`text-sm font-semibold ${isPnlPositive ? 'text-white' : 'text-red-300'}`}>
+              <span className="text-sm font-semibold" style={{ color: isPnlPositive ? T.green : T.red }}>
                 {fmtKrwSigned(portfolio.pnl)}
               </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                isPnlPositive ? 'bg-white/20 text-blue-100' : 'bg-red-400/30 text-red-200'
-              }`}>
+              <span
+                className="text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: isPnlPositive ? 'rgba(76,175,80,0.2)' : 'rgba(224,82,82,0.2)',
+                  color: isPnlPositive ? T.green : T.red,
+                }}
+              >
                 {fmtPct(portfolio.pnlPct)}
               </span>
             </div>
-            <p className="mt-1.5 text-xs text-blue-300">
+            <p className="mt-1.5 text-xs" style={{ color: T.textMuted }}>
               투자원금 {fmtKrw(portfolio.totalPrincipal)}
             </p>
           </>
         ) : (
           <>
-            <p className="text-[2rem] font-bold text-white/30 tracking-tight leading-none">₩ —</p>
-            <p className="mt-3 text-sm text-blue-300">거래를 추가하면 자산이 집계됩니다</p>
+            <p className="text-[2rem] font-bold tracking-tight leading-none" style={{ color: T.goldDim }}>₩ —</p>
+            <p className="mt-3 text-sm" style={{ color: T.textMuted }}>거래를 추가하면 자산이 집계됩니다</p>
           </>
         )}
       </div>
@@ -223,7 +228,10 @@ export default function Dashboard() {
       {holdings.length > 0 && (
         <Card className="p-4">
           {portfolio.someNoPrice && (
-            <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mb-3 text-center">
+            <p
+              className="text-[10px] rounded-lg px-2.5 py-1.5 mb-3 text-center"
+              style={{ color: T.amber, backgroundColor: 'rgba(245,158,11,0.1)', border: `1px solid ${T.amber}` }}
+            >
               일부 종목은 마지막 가격 기준으로 계산됩니다
             </p>
           )}
@@ -235,20 +243,13 @@ export default function Dashboard() {
               { label: '총 수익률',  value: totalReturn,  percent: true, bold: true },
             ].map(({ label, value, bold, percent }) => (
               <div key={label}>
-                <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
-                {percent ? (
-                  <p className={`text-sm tabular-nums ${bold ? 'font-bold' : 'font-semibold'} ${
-                    value === 0 ? 'text-slate-500' : value > 0 ? 'text-blue-600' : 'text-red-500'
-                  }`}>
-                    {fmtPct(value)}
-                  </p>
-                ) : (
-                  <p className={`text-sm tabular-nums ${bold ? 'font-bold' : 'font-semibold'} ${
-                    value === 0 ? 'text-slate-500' : value > 0 ? 'text-blue-600' : 'text-red-500'
-                  }`}>
-                    {fmtKrwSigned(value)}
-                  </p>
-                )}
+                <p className="text-[10px] mb-0.5" style={{ color: T.textMuted }}>{label}</p>
+                <p
+                  className={`text-sm tabular-nums ${bold ? 'font-bold' : 'font-semibold'}`}
+                  style={{ color: value === 0 ? T.textMuted : value > 0 ? T.green : T.red }}
+                >
+                  {percent ? fmtPct(value) : fmtKrwSigned(value)}
+                </p>
               </div>
             ))}
           </div>
@@ -261,23 +262,28 @@ export default function Dashboard() {
         <Card className="p-4">
           {cashFlows.length > 0 ? (
             <>
-              <div className="grid grid-cols-3 divide-x divide-slate-100 mb-3">
+              <div className="grid grid-cols-3 mb-3" style={{ borderBottom: `1px solid ${T.divider}` }}>
                 {[
-                  { label: '수입',    value: flow.income,   color: 'text-blue-600'  },
-                  { label: '고정비',  value: flow.fixed,    color: 'text-slate-700' },
-                  { label: '변동지출', value: flow.variable, color: 'text-slate-700' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="text-center px-2 first:pl-0 last:pr-0">
-                    <p className="text-[11px] text-slate-400 mb-1">{label}</p>
-                    <p className={`text-sm font-bold ${color} tabular-nums`}>{fmtKrw(value)}</p>
+                  { label: '수입',    value: flow.income,   color: T.green        },
+                  { label: '고정비',  value: flow.fixed,    color: T.textPrimary  },
+                  { label: '변동지출', value: flow.variable, color: T.textPrimary  },
+                ].map(({ label, value, color }, i) => (
+                  <div
+                    key={label}
+                    className="text-center px-2 first:pl-0 last:pr-0 pb-3"
+                    style={i > 0 ? { borderLeft: `1px solid ${T.divider}` } : {}}
+                  >
+                    <p className="text-[11px] mb-1" style={{ color: T.textMuted }}>{label}</p>
+                    <p className="text-sm font-bold tabular-nums" style={{ color }}>{fmtKrw(value)}</p>
                   </div>
                 ))}
               </div>
-              <div className={`rounded-xl px-4 py-2.5 flex items-center justify-between ${
-                netFlow >= 0 ? 'bg-blue-50' : 'bg-red-50'
-              }`}>
-                <span className="text-xs text-slate-500">순현금흐름</span>
-                <span className={`text-sm font-bold tabular-nums ${netFlow >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+              <div
+                className="rounded-xl px-4 py-2.5 flex items-center justify-between mt-3"
+                style={{ backgroundColor: netFlow >= 0 ? 'rgba(76,175,80,0.08)' : 'rgba(224,82,82,0.08)', border: `1px solid ${netFlow >= 0 ? T.green : T.red}` }}
+              >
+                <span className="text-xs" style={{ color: T.textMuted }}>순현금흐름</span>
+                <span className="text-sm font-bold tabular-nums" style={{ color: netFlow >= 0 ? T.green : T.red }}>
                   {fmtKrwSigned(netFlow)}
                 </span>
               </div>
@@ -295,29 +301,29 @@ export default function Dashboard() {
           {dividend.annual > 0 || dividend.monthly > 0 ? (
             <>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="rounded-xl bg-emerald-50 p-3">
-                  <p className="text-[11px] text-emerald-500 mb-1">{mo}월 수령 배당</p>
-                  <p className="text-base font-bold text-emerald-700 tabular-nums">{fmtKrw(dividend.monthly)}</p>
+                <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(76,175,80,0.08)', border: `1px solid ${T.green}` }}>
+                  <p className="text-[11px] mb-1" style={{ color: T.green }}>{mo}월 수령 배당</p>
+                  <p className="text-base font-bold tabular-nums" style={{ color: T.green }}>{fmtKrw(dividend.monthly)}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[11px] text-slate-400 mb-1">연간 누적 ({thisYear})</p>
-                  <p className="text-base font-bold text-slate-800 tabular-nums">{fmtKrw(dividend.annual)}</p>
+                <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(201,168,76,0.08)', border: `1px solid ${T.goldDim}` }}>
+                  <p className="text-[11px] mb-1" style={{ color: T.textMuted }}>연간 누적 ({thisYear})</p>
+                  <p className="text-base font-bold tabular-nums" style={{ color: T.goldLight }}>{fmtKrw(dividend.annual)}</p>
                 </div>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-slate-400">이번달 목표 달성률</span>
-                  <span className="text-xs font-semibold text-slate-600 tabular-nums">
+                  <span className="text-xs" style={{ color: T.textMuted }}>이번달 목표 달성률</span>
+                  <span className="text-xs font-semibold tabular-nums" style={{ color: T.textPrimary }}>
                     {goalPct.toFixed(1)}%
                   </span>
                 </div>
-                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: T.divider }}>
                   <div
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${goalPct}%` }}
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${goalPct}%`, backgroundColor: T.gold }}
                   />
                 </div>
-                <p className="mt-1.5 text-right text-[11px] text-slate-400">
+                <p className="mt-1.5 text-right text-[11px]" style={{ color: T.textMuted }}>
                   목표 {fmtKrw(dividendGoalKrw)}
                 </p>
               </div>
@@ -334,7 +340,6 @@ export default function Dashboard() {
         <Card className="p-4">
           {allocation.length > 0 ? (
             <>
-              {/* 가로 비율 바 */}
               <div className="flex rounded-full overflow-hidden h-3 mb-4 gap-px">
                 {allocation.map((item) => (
                   <div
@@ -344,17 +349,16 @@ export default function Dashboard() {
                   />
                 ))}
               </div>
-              {/* 범례 */}
               <div className="space-y-2.5">
                 {allocation.map((item) => (
                   <div key={item.market} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm text-slate-700">{item.market}</span>
+                      <span className="text-sm" style={{ color: T.textPrimary }}>{item.market}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-400 tabular-nums">{fmtKrw(item.value)}</span>
-                      <span className="text-xs font-semibold text-slate-600 tabular-nums w-11 text-right">
+                      <span className="text-xs tabular-nums" style={{ color: T.textMuted }}>{fmtKrw(item.value)}</span>
+                      <span className="text-xs font-semibold tabular-nums w-11 text-right" style={{ color: T.textPrimary }}>
                         {item.pct.toFixed(1)}%
                       </span>
                     </div>
@@ -375,7 +379,8 @@ export default function Dashboard() {
           action={
             <button
               onClick={() => navigate('/transactions')}
-              className="text-xs text-blue-600 font-medium active:opacity-70"
+              className="text-xs font-medium active:opacity-70"
+              style={{ color: T.gold }}
             >
               전체보기 ›
             </button>
@@ -388,20 +393,25 @@ export default function Dashboard() {
               return (
                 <div
                   key={tx.id}
-                  className={`flex items-center justify-between px-4 py-3.5 ${i > 0 ? 'border-t border-slate-50' : ''}`}
+                  className="flex items-center justify-between px-4 py-3.5"
+                  style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold ${s.bg} ${s.text}`}>
+                    <span
+                      className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                      style={{ backgroundColor: s.bg, color: s.text }}
+                    >
                       {tx.side}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{tx.assetName}</p>
-                      <p className="text-[11px] text-slate-400">{tx.date}</p>
+                      <p className="text-sm font-medium truncate" style={{ color: T.textPrimary }}>{tx.assetName}</p>
+                      <p className="text-[11px]" style={{ color: T.textMuted }}>{tx.date}</p>
                     </div>
                   </div>
-                  <span className={`shrink-0 ml-3 text-sm font-semibold tabular-nums ${
-                    tx.side === '매도' ? 'text-red-500' : 'text-slate-800'
-                  }`}>
+                  <span
+                    className="shrink-0 ml-3 text-sm font-semibold tabular-nums"
+                    style={{ color: tx.side === '매도' ? T.red : T.textPrimary }}
+                  >
                     {fmtKrw(tx.krwAmount)}
                   </span>
                 </div>
