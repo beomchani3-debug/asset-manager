@@ -6,6 +6,7 @@ import useToastStore from '../store/useToastStore'
 import useSyncStore from '../store/useSyncStore'
 import usePriceStore from '../store/usePriceStore'
 import useAuthStore from '../store/useAuthStore'
+import useFixedExpenseStore from '../store/useFixedExpenseStore'
 import { migrateToCloud, loadFromCloud, clearAllCloudData } from '../services/cloudSync'
 import { supabase } from '../lib/supabase'
 import { T } from '../theme'
@@ -47,6 +48,230 @@ function Row({ icon, label, value, color, onClick, chevron = false, danger = fal
         )}
       </div>
     </button>
+  )
+}
+
+// ─── 고정비 관리 ──────────────────────────────────────────────────────────────
+function FixedExpenseSection() {
+  const fixedExpenses    = useFixedExpenseStore((s) => s.fixedExpenses)
+  const addFixedExpense  = useFixedExpenseStore((s) => s.addFixedExpense)
+  const updateFixedExpense = useFixedExpenseStore((s) => s.updateFixedExpense)
+  const deleteFixedExpense = useFixedExpenseStore((s) => s.deleteFixedExpense)
+  const pushToast        = useToastStore((s) => s.push)
+
+  const EMPTY_FORM = { name: '', amount: '', day: '' }
+  const [showForm, setShowForm]   = useState(false)
+  const [editId, setEditId]       = useState(null)
+  const [form, setForm]           = useState(EMPTY_FORM)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+
+  const inpStyle = { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }
+  const lblCls   = 'block text-[11px] font-semibold mb-1'
+
+  function openAdd() {
+    setEditId(null)
+    setForm(EMPTY_FORM)
+    setShowForm(true)
+  }
+
+  function openEdit(fe) {
+    setEditId(fe.id)
+    setForm({ name: fe.name, amount: String(fe.amount), day: String(fe.day) })
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditId(null)
+    setForm(EMPTY_FORM)
+  }
+
+  function handleSave() {
+    const name   = form.name.trim()
+    const amount = parseInt(form.amount.replace(/,/g, ''), 10)
+    const day    = parseInt(form.day, 10)
+    if (!name)                        { pushToast('이름을 입력하세요', 'error'); return }
+    if (!amount || amount <= 0)       { pushToast('금액을 입력하세요', 'error'); return }
+    if (!day || day < 1 || day > 31) { pushToast('날짜는 1~31 사이로 입력하세요', 'error'); return }
+
+    if (editId) {
+      updateFixedExpense(editId, { name, amount, day })
+      pushToast('수정되었습니다', 'success')
+    } else {
+      addFixedExpense({ name, amount, day, isActive: true })
+      pushToast('고정비가 추가되었습니다', 'success')
+    }
+    closeForm()
+  }
+
+  function handleToggle(fe) {
+    updateFixedExpense(fe.id, { isActive: !fe.isActive })
+  }
+
+  function handleDelete(id) {
+    deleteFixedExpense(id)
+    setConfirmDeleteId(null)
+    pushToast('삭제되었습니다', 'success')
+  }
+
+  return (
+    <Section title="고정비 관리">
+      <div className="px-4 py-3 space-y-2">
+
+        {/* 항목 목록 */}
+        {fixedExpenses.length === 0 && !showForm && (
+          <p className="text-[12px] text-center py-2" style={{ color: T.textMuted }}>
+            등록된 고정비가 없습니다
+          </p>
+        )}
+
+        {fixedExpenses.map((fe) => (
+          <div key={fe.id}>
+            {confirmDeleteId === fe.id ? (
+              <div
+                className="rounded-xl px-3 py-2.5 space-y-2"
+                style={{ backgroundColor: 'rgba(224,82,82,0.08)', border: `1px solid ${T.red}` }}
+              >
+                <p className="text-[12px] font-semibold text-center" style={{ color: T.red }}>
+                  "{fe.name}" 삭제하시겠습니까?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="flex-1 py-2 text-[12px] font-bold rounded-xl"
+                    style={{ backgroundColor: T.inputBg, color: T.textPrimary }}
+                  >취소</button>
+                  <button
+                    onClick={() => handleDelete(fe.id)}
+                    className="flex-1 py-2 text-[12px] font-bold rounded-xl text-white"
+                    style={{ backgroundColor: T.red }}
+                  >삭제</button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+                style={{ backgroundColor: T.inputBg, border: `1px solid ${T.inputBorder}` }}
+              >
+                {/* 토글 */}
+                <button
+                  onClick={() => handleToggle(fe)}
+                  className="shrink-0 w-9 h-5 rounded-full relative transition-colors"
+                  style={{ backgroundColor: fe.isActive ? T.gold : T.inputBorder }}
+                >
+                  <span
+                    className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+                    style={{
+                      backgroundColor: '#0A0A0A',
+                      left: fe.isActive ? 'calc(100% - 1.1rem)' : '0.1rem',
+                    }}
+                  />
+                </button>
+
+                {/* 정보 */}
+                <div className="flex-1 min-w-0">
+                  <span
+                    className="text-[13px] font-semibold truncate block"
+                    style={{ color: fe.isActive ? T.textPrimary : T.textMuted }}
+                  >
+                    {fe.name}
+                  </span>
+                  <span className="text-[11px]" style={{ color: T.textMuted }}>
+                    매달 {fe.day}일 · {fe.amount.toLocaleString('ko-KR')}원
+                  </span>
+                </div>
+
+                {/* 수정/삭제 */}
+                <button
+                  onClick={() => openEdit(fe)}
+                  className="shrink-0 text-[11px] px-2 py-1 rounded-lg"
+                  style={{ color: T.gold, backgroundColor: 'rgba(201,168,76,0.1)' }}
+                >수정</button>
+                <button
+                  onClick={() => setConfirmDeleteId(fe.id)}
+                  className="shrink-0 text-[11px] px-2 py-1 rounded-lg"
+                  style={{ color: T.red, backgroundColor: 'rgba(224,82,82,0.1)' }}
+                >삭제</button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* 추가/수정 폼 */}
+        {showForm && (
+          <div
+            className="rounded-xl px-3 py-3 space-y-2.5 mt-1"
+            style={{ backgroundColor: T.inputBg, border: `1px solid ${T.gold}` }}
+          >
+            <p className="text-[12px] font-bold" style={{ color: T.gold }}>
+              {editId ? '고정비 수정' : '고정비 추가'}
+            </p>
+            <div>
+              <label className={lblCls} style={{ color: T.textMuted }}>이름</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="유튜브 프리미엄"
+                className="w-full border rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                style={inpStyle}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={lblCls} style={{ color: T.textMuted }}>금액 (원)</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  placeholder="14900"
+                  className="w-full border rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                  style={inpStyle}
+                />
+              </div>
+              <div>
+                <label className={lblCls} style={{ color: T.textMuted }}>매달 며칠</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.day}
+                  onChange={(e) => setForm({ ...form, day: e.target.value })}
+                  placeholder="23"
+                  min="1"
+                  max="31"
+                  className="w-full border rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                  style={inpStyle}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-0.5">
+              <button
+                onClick={closeForm}
+                className="flex-1 py-2 text-[12px] font-bold rounded-xl"
+                style={{ backgroundColor: T.card, color: T.textMuted }}
+              >취소</button>
+              <button
+                onClick={handleSave}
+                className="flex-1 py-2 text-[12px] font-bold rounded-xl"
+                style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+              >저장</button>
+            </div>
+          </div>
+        )}
+
+        {/* 추가 버튼 */}
+        {!showForm && (
+          <button
+            onClick={openAdd}
+            className="w-full py-2.5 text-[13px] font-bold rounded-xl active:opacity-80 mt-1"
+            style={{ backgroundColor: 'rgba(201,168,76,0.1)', color: T.gold, border: `1px dashed ${T.goldDim}` }}
+          >
+            + 고정비 추가
+          </button>
+        )}
+      </div>
+    </Section>
   )
 }
 
@@ -207,6 +432,9 @@ export default function Settings() {
           </div>
         </Section>
       )}
+
+      {/* 고정비 관리 */}
+      <FixedExpenseSection />
 
       {/* 목표 설정 */}
       <Section title="목표 설정">
