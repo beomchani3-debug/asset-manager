@@ -304,16 +304,11 @@ export default function Settings() {
   const [usdInput, setUsdInput] = useState(
     settings.fxRates.USD > 0 ? String(settings.fxRates.USD) : ''
   )
-  const [jpyInput, setJpyInput] = useState(
-    settings.fxRates.JPY > 0 ? String(settings.fxRates.JPY) : ''
-  )
 
   function saveFxRates() {
     const usd = parseFloat(usdInput)
-    const jpy = parseFloat(jpyInput)
-    if (usd > 0) updateSettings({ fxRates: { ...settings.fxRates, USD: usd } })
-    if (jpy > 0) updateSettings({ fxRates: { ...settings.fxRates, JPY: jpy } })
-    if (usd > 0 || jpy > 0) {
+    if (usd > 0) {
+      updateSettings({ fxRates: { ...settings.fxRates, USD: usd } })
       pushToast('환율이 저장되었습니다', 'success')
     } else {
       pushToast('올바른 환율을 입력하세요', 'error')
@@ -477,31 +472,17 @@ export default function Settings() {
       {/* 환율 설정 */}
       <Section title="환율 설정 (수동)">
         <div className="px-4 py-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lblCls} style={{ color: T.textMuted }}>USD / KRW</label>
-              <input
-                type="number"
-                inputMode="decimal"
-                value={usdInput}
-                onChange={(e) => setUsdInput(e.target.value)}
-                placeholder="1380"
-                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
-                style={inpStyle}
-              />
-            </div>
-            <div>
-              <label className={lblCls} style={{ color: T.textMuted }}>JPY / KRW</label>
-              <input
-                type="number"
-                inputMode="decimal"
-                value={jpyInput}
-                onChange={(e) => setJpyInput(e.target.value)}
-                placeholder="9.5"
-                className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
-                style={inpStyle}
-              />
-            </div>
+          <div>
+            <label className={lblCls} style={{ color: T.textMuted }}>USD / KRW</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={usdInput}
+              onChange={(e) => setUsdInput(e.target.value)}
+              placeholder="1380"
+              className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+              style={inpStyle}
+            />
           </div>
           <button
             onClick={saveFxRates}

@@ -1,9 +1,8 @@
-// Vercel serverless: server-side proxy for Yahoo Finance + Binance
-// Browser → /api/prices → Yahoo/Binance (no CORS issues)
+// Vercel serverless: server-side proxy for Yahoo Finance
+// Browser → /api/prices → Yahoo (no CORS issues)
 
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart'
 const YAHOO_ALT  = 'https://query2.finance.yahoo.com/v8/finance/chart'
-const BINANCE    = 'https://api.binance.com/api/v3/ticker/price'
 
 const YAHOO_HEADERS = {
   'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -17,18 +16,11 @@ const YAHOO_HEADERS = {
 function toYahooSymbol(ticker, market) {
   if (ticker.includes('.')) return ticker
   if (market === '국내') return `${ticker}.KS`
-  if (market === '일본') return `${ticker}.T`
   return ticker
-}
-
-function toBinanceSymbol(ticker) {
-  const t = ticker.toUpperCase()
-  return t.endsWith('USDT') ? t : `${t}USDT`
 }
 
 function marketToCurrency(market) {
   if (market === '국내') return 'KRW'
-  if (market === '일본') return 'JPY'
   return 'USD'
 }
 
@@ -50,24 +42,14 @@ async function yahooFetch(symbol) {
     } catch (e) {
       if (e.name === 'TimeoutError') throw new Error(`Timeout for ${symbol}`)
       if (base === YAHOO_ALT) throw e
-      // first host failed — try second
     }
   }
   throw new Error(`Yahoo Finance: no data for ${symbol}`)
 }
 
 async function fetchSingle(ticker, market) {
-  if (market === '코인') {
-    const symbol = toBinanceSymbol(ticker)
-    const res = await fetch(`${BINANCE}?symbol=${symbol}`, {
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) throw new Error(`Binance ${res.status}: ${symbol}`)
-    const { price } = await res.json()
-    return { price: parseFloat(price), currency: 'USD' }
-  }
   const symbol = toYahooSymbol(ticker, market)
-  const price = await yahooFetch(symbol)
+  const price  = await yahooFetch(symbol)
   return { price, currency: marketToCurrency(market) }
 }
 
@@ -90,7 +72,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'tickers and markets must have the same length' })
   }
 
-  const data = {}
+  const data   = {}
   const failed = []
 
   await Promise.all(

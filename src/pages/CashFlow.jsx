@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import useCashFlowStore from '../store/useCashFlowStore'
 import useSettingsStore from '../store/useSettingsStore'
 import { T } from '../theme'
@@ -480,11 +481,20 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
 
 // ─── CashFlow ─────────────────────────────────────────────────────────────────
 export default function CashFlow() {
+  const location = useLocation()
   const [ym,           setYm]           = useState(currentYM())
   const [catTab,       setCatTab]       = useState('고정비')
   const [modalOpen,    setModalOpen]    = useState(false)
   const [editingCf,    setEditingCf]    = useState(null)
   const [editCatsOpen, setEditCatsOpen] = useState(false)
+
+  useEffect(() => {
+    if (location.state?.autoOpen) {
+      setEditingCf(null)
+      setModalOpen(true)
+      window.history.replaceState({}, '')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cashFlows        = useCashFlowStore((s) => s.cashFlows)
   const addCashFlow      = useCashFlowStore((s) => s.addCashFlow)

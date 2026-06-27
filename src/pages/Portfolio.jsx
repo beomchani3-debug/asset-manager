@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts'
 import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
@@ -28,7 +29,7 @@ function fmtQty(qty) {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MARKETS = ['전체', '미국', '국내', '일본', '코인']
+const MARKETS = ['전체', '미국', '국내']
 const SORTS   = ['평가금액순', '수익률순', '종목명순']
 
 const MARKET_BADGE_STYLE = {
@@ -123,7 +124,7 @@ function TreeTooltip({ active, payload }) {
 }
 
 // ─── HoldingCard ──────────────────────────────────────────────────────────────
-function HoldingCard({ holding, onClick, realizedPnl }) {
+function HoldingCard({ holding, onClick, realizedPnl, divInfo }) {
   const { hasPrice, priceEntry, marketValue, unrealizedPnl, pnlPct } = holding
   const up = unrealizedPnl >= 0
 
@@ -209,255 +210,32 @@ function HoldingCard({ holding, onClick, realizedPnl }) {
           </span>
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── DetailModal ──────────────────────────────────────────────────────────────
-function DetailModal({ holding, transactions, onClose }) {
-  const [show, setShow]             = useState(false)
-  const [priceInput, setPriceInput] = useState('')
-
-  const setManualPrice = useSettingsStore((s) => s.setManualPrice)
-  const setPrice       = usePriceStore((s) => s.setPrice)
-  const hasManualPrice = useSettingsStore((s) => s.settings.manualPrices[holding.ticker] != null)
-  const manualPrice    = useSettingsStore((s) => s.settings.manualPrices[holding.ticker])
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setShow(true))
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  const close = () => { setShow(false); setTimeout(onClose, 300) }
-
-  const buyHistory = useMemo(() =>
-    transactions
-      .filter((t) => t.ticker === holding.ticker && t.broker === holding.broker && t.side === '매수')
-      .sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [transactions, holding.ticker, holding.broker]
-  )
-
-  const realizedHistory = useMemo(() => {
-    const tickerTxs = transactions.filter(
-      t => t.ticker === holding.ticker && t.broker === holding.broker
-    )
-    return calcPnL(tickerTxs).realizedList.sort((a, b) => new Date(b.date) - new Date(a.date))
-  }, [transactions, holding.ticker, holding.broker])
-
-  const divHistory = useMemo(() =>
-    transactions
-      .filter((t) => t.ticker === holding.ticker && t.side === '배당')
-      .sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [transactions, holding.ticker]
-  )
-
-  const handleSavePrice = () => {
-    const p = parseFloat(priceInput)
-    if (isNaN(p) || p <= 0) return
-    setManualPrice(holding.ticker, p)
-    setPrice(holding.ticker, p, holding.currency)
-    setPriceInput('')
-  }
-
-  return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
-        onClick={close}
-      />
-      <div
-        className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px]
-                   rounded-t-3xl max-h-[85vh] overflow-y-auto no-scrollbar
-                   transition-transform duration-300 ease-out ${show ? 'translate-y-0' : 'translate-y-full'}`}
-        style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, borderBottom: 'none' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: T.goldDim }} />
-        </div>
-
-        <div className="px-5 pt-2 pb-10">
-          <div className="flex items-start justify-between mb-5">
-            <div className="min-w-0">
-              <h3 className="text-xl font-bold mb-1.5 truncate" style={{ color: T.goldLight }}>{holding.assetName}</h3>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-mono" style={{ color: T.textMuted }}>{holding.ticker}</span>
-                <Badge label={holding.market} isMarket />
-                {holding.sector && <Badge label={holding.sector} />}
-                <Badge label={holding.broker} />
-              </div>
-            </div>
-            <button
-              onClick={close}
-              aria-label="닫기"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ml-3 active:opacity-70"
-              style={{ backgroundColor: T.inputBg, color: T.textMuted }}
-            >
-              ✕
-            </button>
+      {divInfo && divInfo.annualKrw > 0 && (
+        <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: `1px solid ${T.divider}` }}>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]" style={{ color: T.textMuted }}>연 배당률</span>
+            <span className="text-[11px] font-semibold tabular-nums" style={{ color: T.green }}>
+              {divInfo.yieldPct.toFixed(2)}%
+            </span>
           </div>
-
-          <div className="rounded-2xl p-4 mb-5" style={{ backgroundColor: T.inputBg, border: `1px solid ${T.inputBorder}` }}>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-xs font-semibold" style={{ color: T.textPrimary }}>현재가 수동 입력</p>
-              {hasManualPrice && (
-                <span
-                  className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                  style={{ color: T.amber, backgroundColor: 'rgba(245,158,11,0.1)' }}
-                >
-                  수동가 적용 · {fmtPrice(manualPrice, holding.currency)}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                placeholder={`현재가 입력 (${holding.currency})`}
-                className="flex-1 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#C9A84C] transition-colors"
-                style={{ backgroundColor: T.card, borderColor: T.inputBorder, color: T.textPrimary }}
-              />
-              <button
-                onClick={handleSavePrice}
-                disabled={!priceInput || parseFloat(priceInput) <= 0}
-                className="px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-40 active:opacity-80 transition-opacity"
-                style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
-              >
-                저장
-              </button>
-            </div>
-          </div>
-
-          {/* 매수 이력 */}
-          <div className="mb-5">
-            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: T.textMuted }}>
-              매수 이력 ({buyHistory.length}건)
-            </p>
-            {buyHistory.length > 0 ? (
-              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.inputBorder}` }}>
-                <div className="grid grid-cols-5 px-3 py-2 text-[10px] font-semibold" style={{ backgroundColor: T.inputBg, color: T.textMuted }}>
-                  {['날짜', '수량', '단가', '환율', '원화'].map((h, i) => (
-                    <span key={h} className={i > 0 ? 'text-right' : ''}>{h}</span>
-                  ))}
-                </div>
-                {buyHistory.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="grid grid-cols-5 px-3 py-2.5 text-[11px] tabular-nums"
-                    style={{ borderTop: `1px solid ${T.divider}` }}
-                  >
-                    <span style={{ color: T.textMuted }}>{tx.date.slice(5)}</span>
-                    <span className="text-right" style={{ color: T.textPrimary }}>{fmtQty(tx.quantity)}</span>
-                    <span className="text-right" style={{ color: T.textPrimary }}>{fmtPrice(tx.price, tx.currency)}</span>
-                    <span className="text-right" style={{ color: T.textMuted }}>
-                      {tx.currency === 'KRW' ? '—' : Math.round(tx.fxRate).toLocaleString('ko-KR')}
-                    </span>
-                    <span className="text-right" style={{ color: T.textPrimary }}>
-                      {Math.round(tx.krwAmount).toLocaleString('ko-KR')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-sm py-3" style={{ color: T.textMuted }}>매수 이력 없음</p>
-            )}
-          </div>
-
-          {/* 매도/실현손익 이력 */}
-          {realizedHistory.length > 0 && (
-            <div className="mb-5">
-              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: T.textMuted }}>
-                매도 이력 / 실현손익 ({realizedHistory.length}건)
-              </p>
-              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.inputBorder}` }}>
-                <div className="grid grid-cols-4 px-3 py-2 text-[10px] font-semibold" style={{ backgroundColor: T.inputBg, color: T.textMuted }}>
-                  {['날짜', '수량', '수익금', '실현손익'].map((h, i) => (
-                    <span key={h} className={i > 0 ? 'text-right' : ''}>{h}</span>
-                  ))}
-                </div>
-                {realizedHistory.map((r) => (
-                  <div
-                    key={r.id}
-                    className="grid grid-cols-4 px-3 py-2.5 text-[11px] tabular-nums"
-                    style={{ borderTop: `1px solid ${T.divider}` }}
-                  >
-                    <span style={{ color: T.textMuted }}>{r.date.slice(5)}</span>
-                    <span className="text-right" style={{ color: T.textPrimary }}>{fmtQty(r.qty)}</span>
-                    <span className="text-right" style={{ color: T.textPrimary }}>
-                      {Math.round(r.proceedsKrw).toLocaleString('ko-KR')}
-                    </span>
-                    <span className="text-right font-semibold" style={{ color: r.pnl >= 0 ? T.green : T.red }}>
-                      {r.pnl >= 0 ? '+' : '−'}{Math.round(Math.abs(r.pnl)).toLocaleString('ko-KR')}
-                    </span>
-                  </div>
-                ))}
-                <div
-                  className="grid grid-cols-4 px-3 py-2.5 text-[11px] tabular-nums"
-                  style={{ borderTop: `1px solid ${T.gold}`, backgroundColor: T.inputBg }}
-                >
-                  <span className="font-semibold col-span-3" style={{ color: T.textPrimary }}>총 실현손익</span>
-                  <span className="text-right font-bold" style={{ color: realizedHistory.reduce((s, r) => s + r.pnl, 0) >= 0 ? T.green : T.red }}>
-                    {(() => {
-                      const total = realizedHistory.reduce((s, r) => s + r.pnl, 0)
-                      return `${total >= 0 ? '+' : '−'}${Math.round(Math.abs(total)).toLocaleString('ko-KR')}`
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 배당 이력 */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: T.textMuted }}>
-              배당 이력 ({divHistory.length}건)
-            </p>
-            {divHistory.length > 0 ? (
-              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.inputBorder}` }}>
-                <div className="grid grid-cols-2 px-3 py-2 text-[10px] font-semibold" style={{ backgroundColor: T.inputBg, color: T.textMuted }}>
-                  <span>날짜</span>
-                  <span className="text-right">수령액 (원화)</span>
-                </div>
-                {divHistory.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="grid grid-cols-2 px-3 py-2.5 text-[11px] tabular-nums"
-                    style={{ borderTop: `1px solid ${T.divider}` }}
-                  >
-                    <span style={{ color: T.textMuted }}>{tx.date}</span>
-                    <span className="text-right font-semibold" style={{ color: T.green }}>
-                      {Math.round(tx.krwAmount).toLocaleString('ko-KR')}원
-                    </span>
-                  </div>
-                ))}
-                <div
-                  className="grid grid-cols-2 px-3 py-2.5 text-[11px] tabular-nums"
-                  style={{ borderTop: `1px solid ${T.gold}`, backgroundColor: T.inputBg }}
-                >
-                  <span className="font-semibold" style={{ color: T.textPrimary }}>합계</span>
-                  <span className="text-right font-bold" style={{ color: T.green }}>
-                    {Math.round(divHistory.reduce((s, t) => s + t.krwAmount, 0)).toLocaleString('ko-KR')}원
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-center text-sm py-3" style={{ color: T.textMuted }}>배당 이력 없음</p>
-            )}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px]" style={{ color: T.textMuted }}>월 예상</span>
+            <span className="text-[11px] font-semibold tabular-nums" style={{ color: T.green }}>
+              ₩{Math.round(divInfo.monthlyKrw).toLocaleString('ko-KR')}
+            </span>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────
 export default function Portfolio() {
+  const navigate = useNavigate()
   const [marketFilter, setMarketFilter] = useState('전체')
   const [sortBy, setSortBy]             = useState('평가금액순')
   const [view, setView]                 = useState('카드')
-  const [selected, setSelected]         = useState(null)
 
   const holdings     = useTransactionStore((s) => s.holdings)
   const transactions = useTransactionStore((s) => s.transactions)
@@ -491,6 +269,20 @@ export default function Portfolio() {
   }, [enriched, marketFilter, sortBy])
 
   const pnlByTicker = useMemo(() => calcPnL(transactions).byTicker, [transactions])
+
+  // 최근 12개월 배당 합계 per ticker (yield, 월 예상)
+  const divByTicker = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setFullYear(cutoff.getFullYear() - 1)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+
+    const map = {}
+    for (const tx of transactions) {
+      if (tx.side !== '배당' || tx.date < cutoffStr) continue
+      map[tx.ticker] = (map[tx.ticker] ?? 0) + tx.krwAmount
+    }
+    return map
+  }, [transactions])
 
   const { totalMV, totalPrin, totalPnl } = useMemo(() => {
     const mv   = enriched.reduce((s, h) => s + h.marketValue, 0)
@@ -568,14 +360,22 @@ export default function Portfolio() {
       {view === '카드' ? (
         <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3">
           {displayed.length > 0 ? (
-            displayed.map((h) => (
-              <HoldingCard
-                key={`${h.ticker}::${h.broker}`}
-                holding={h}
-                onClick={() => setSelected(h)}
-                realizedPnl={pnlByTicker[`${h.ticker}::${h.broker}`] ?? 0}
-              />
-            ))
+            displayed.map((h) => {
+              const annualKrw  = divByTicker[h.ticker] ?? 0
+              const mv         = h.marketValue > 0 ? h.marketValue : h.principal
+              const yieldPct   = mv > 0 ? (annualKrw / mv) * 100 : 0
+              const monthlyKrw = annualKrw / 12
+              const divInfo    = annualKrw > 0 ? { annualKrw, yieldPct, monthlyKrw } : null
+              return (
+                <HoldingCard
+                  key={`${h.ticker}::${h.broker}`}
+                  holding={h}
+                  onClick={() => navigate(`/portfolio/${encodeURIComponent(h.ticker)}?broker=${encodeURIComponent(h.broker)}`)}
+                  realizedPnl={pnlByTicker[`${h.ticker}::${h.broker}`] ?? 0}
+                  divInfo={divInfo}
+                />
+              )
+            })
           ) : holdings.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16 gap-3 text-center">
               <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
@@ -649,14 +449,6 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* ── 상세 모달 ────────────────────────────────────────────────────── */}
-      {selected && (
-        <DetailModal
-          holding={selected}
-          transactions={transactions}
-          onClose={() => setSelected(null)}
-        />
-      )}
     </div>
   )
 }

@@ -5,9 +5,8 @@ import Portfolio from './pages/Portfolio'
 import Transactions from './pages/Transactions'
 import CashFlow from './pages/CashFlow'
 import Settings from './pages/Settings'
-import PnLAnalysis from './pages/PnLAnalysis'
 import MonthlyReport from './pages/MonthlyReport'
-import DividendCalendar from './pages/DividendCalendar'
+import StockDetail from './pages/StockDetail'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AuthProvider from './components/AuthProvider'
@@ -27,14 +26,13 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard"        element={<Dashboard />} />
-          <Route path="/portfolio"        element={<Portfolio />} />
-          <Route path="/transactions"     element={<Transactions />} />
-          <Route path="/budget"           element={<CashFlow />} />
-          <Route path="/pnl"              element={<PnLAnalysis />} />
-          <Route path="/report"           element={<MonthlyReport />} />
-          <Route path="/dividend-calendar" element={<DividendCalendar />} />
-          <Route path="/settings"         element={<Settings />} />
+          <Route path="/dashboard"    element={<Dashboard />} />
+          <Route path="/portfolio"    element={<Portfolio />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/budget"       element={<CashFlow />} />
+          <Route path="/report"              element={<MonthlyReport />} />
+          <Route path="/settings"          element={<Settings />} />
+          <Route path="/portfolio/:ticker" element={<StockDetail />} />
         </Route>
       </Route>
     </Routes>

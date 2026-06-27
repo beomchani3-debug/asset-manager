@@ -1,14 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
 import { T } from '../theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SIDE_FILTER  = ['전체', '매수', '매도', '배당']
-const MARKETS      = ['미국', '국내', '일본', '코인']
-const BROKERS      = ['농협증권', '메리츠증권', '바이낸스']
-const CURRENCIES   = ['KRW', 'USD', 'JPY']
-const MKT_CCY      = { 미국: 'USD', 국내: 'KRW', 일본: 'JPY', 코인: 'USD' }
+const MARKETS      = ['미국', '국내']
+const BROKERS      = ['농협증권', '메리츠증권']
+const CURRENCIES   = ['KRW', 'USD']
+const MKT_CCY      = { 미국: 'USD', 국내: 'KRW' }
 
 const BADGE_STYLE = {
   매수: { backgroundColor: '#0A1525', color: T.blue  },
@@ -157,13 +158,16 @@ function initForm(tx, fxRates) {
 function getFxDefault(currency, fxRates) {
   if (currency === 'KRW') return '1'
   if (currency === 'USD' && fxRates.USD > 0) return String(Math.round(fxRates.USD))
-  if (currency === 'JPY' && fxRates.JPY > 0) return String(+(fxRates.JPY).toFixed(2))
   return ''
 }
 
-function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
+function AddEditModal({ tx, suggestions, onClose, onSave, onDelete, defaultSide }) {
   const fxRates   = useSettingsStore((s) => s.settings.fxRates)
-  const [form, setFormRaw] = useState(() => initForm(tx, fxRates))
+  const [form, setFormRaw] = useState(() => {
+    const f = initForm(tx, fxRates)
+    if (!tx && defaultSide) f.side = defaultSide
+    return f
+  })
   const [visible, setVisible]       = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [manualKrw, setManualKrw]   = useState(!!tx)
@@ -588,10 +592,21 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete }) {
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export default function Transactions() {
+  const location = useLocation()
   const [sideFilter, setSideFilter] = useState('전체')
   const [search, setSearch]         = useState('')
   const [editTx, setEditTx]         = useState(null)
   const [modalOpen, setModalOpen]   = useState(false)
+  const [autoSide, setAutoSide]     = useState(null)
+
+  useEffect(() => {
+    if (location.state?.autoOpen) {
+      setAutoSide(location.state.defaultSide ?? '매수')
+      setEditTx(null)
+      setModalOpen(true)
+      window.history.replaceState({}, '')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const transactions      = useTransactionStore((s) => s.transactions)
   const addTransaction    = useTransactionStore((s) => s.addTransaction)
@@ -742,7 +757,8 @@ export default function Transactions() {
         <AddEditModal
           tx={editTx}
           suggestions={suggestions}
-          onClose={() => setModalOpen(false)}
+          defaultSide={autoSide}
+          onClose={() => { setModalOpen(false); setAutoSide(null) }}
           onSave={handleSave}
           onDelete={deleteTransaction}
         />

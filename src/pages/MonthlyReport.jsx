@@ -84,20 +84,40 @@ export default function MonthlyReport() {
   const [ym, setYm]  = useState(currentYM())
   const prevYm       = shiftMonth(ym, -1)
 
-  const transactions         = useTransactionStore((s) => s.transactions)
-  const cashFlows            = useCashFlowStore((s) => s.cashFlows)
-  const getMonthlySummary    = useCashFlowStore((s) => s.getMonthlySummary)
-  const getCategoryBreakdown = useCashFlowStore((s) => s.getMonthlyCategoryBreakdown)
+  const transactions = useTransactionStore((s) => s.transactions)
+  const cashFlows    = useCashFlowStore((s) => s.cashFlows)
 
-  // CashFlow stats
-  const summary     = useMemo(() => getMonthlySummary(ym),    [cashFlows, ym])     // eslint-disable-line react-hooks/exhaustive-deps
-  const prevSummary = useMemo(() => getMonthlySummary(prevYm), [cashFlows, prevYm]) // eslint-disable-line react-hooks/exhaustive-deps
+  // CashFlow stats — 스토어 메서드 대신 직접 계산 (stale closure 방지)
+  const summary = useMemo(() => {
+    const flows = cashFlows.filter((c) => c.date.startsWith(ym))
+    return {
+      income:   flows.filter((c) => c.type === '수입').reduce((s, c) => s + c.amount, 0),
+      fixed:    flows.filter((c) => c.type === '고정비').reduce((s, c) => s + c.amount, 0),
+      variable: flows.filter((c) => c.type === '변동지출' || c.type === '용돈지출').reduce((s, c) => s + c.amount, 0),
+    }
+  }, [cashFlows, ym])
+
+  const prevSummary = useMemo(() => {
+    const flows = cashFlows.filter((c) => c.date.startsWith(prevYm))
+    return {
+      income:   flows.filter((c) => c.type === '수입').reduce((s, c) => s + c.amount, 0),
+      fixed:    flows.filter((c) => c.type === '고정비').reduce((s, c) => s + c.amount, 0),
+      variable: flows.filter((c) => c.type === '변동지출' || c.type === '용돈지출').reduce((s, c) => s + c.amount, 0),
+    }
+  }, [cashFlows, prevYm])
 
   const expense     = summary.fixed + summary.variable
   const prevExpense = prevSummary.fixed + prevSummary.variable
   const balance     = summary.income - expense
 
-  const breakdown  = useMemo(() => getCategoryBreakdown(ym), [cashFlows, ym]) // eslint-disable-line react-hooks/exhaustive-deps
+  const breakdown = useMemo(() => {
+    const flows = cashFlows.filter((c) => c.date.startsWith(ym) && c.type !== '수입')
+    return flows.reduce((acc, c) => {
+      acc[c.category] = (acc[c.category] ?? 0) + c.amount
+      return acc
+    }, {})
+  }, [cashFlows, ym])
+
   const catEntries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
   const pieData    = catEntries.map(([name, value]) => ({ name, value }))
 
