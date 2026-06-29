@@ -185,12 +185,24 @@ function HoldingCard({ holding, onClick, realizedPnl, divInfo }) {
       </div>
 
       {hasPrice ? (
-        <div className="flex items-baseline justify-between">
-          <span className="text-base font-bold tabular-nums" style={{ color: T.goldLight }}>{fmtKrw(marketValue)}</span>
-          <span className="text-sm font-semibold tabular-nums" style={{ color: up ? T.green : T.red }}>
-            {fmtKrwSigned(unrealizedPnl)}
-          </span>
-        </div>
+        <>
+          <div className="flex items-baseline justify-between">
+            <span className="text-base font-bold tabular-nums" style={{ color: T.goldLight }}>{fmtKrw(marketValue)}</span>
+            <span className="text-sm font-semibold tabular-nums" style={{ color: up ? T.green : T.red }}>
+              {fmtKrwSigned(unrealizedPnl)}
+            </span>
+          </div>
+          <div className="mt-2 h-1 rounded-sm overflow-hidden" style={{ backgroundColor: '#1C1C1C', borderRadius: 2 }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${Math.min(100, Math.abs(pnlPct) / 20 * 100)}%`,
+                backgroundColor: up ? T.gold : T.red,
+                borderRadius: 2,
+              }}
+            />
+          </div>
+        </>
       ) : (
         <div className="flex items-center justify-between">
           <span
@@ -211,19 +223,10 @@ function HoldingCard({ holding, onClick, realizedPnl, divInfo }) {
         </div>
       )}
       {divInfo && divInfo.annualKrw > 0 && (
-        <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: `1px solid ${T.divider}` }}>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px]" style={{ color: T.textMuted }}>연 배당률</span>
-            <span className="text-[11px] font-semibold tabular-nums" style={{ color: T.green }}>
-              {divInfo.yieldPct.toFixed(2)}%
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-[10px]" style={{ color: T.textMuted }}>월 예상</span>
-            <span className="text-[11px] font-semibold tabular-nums" style={{ color: T.green }}>
-              ₩{Math.round(divInfo.monthlyKrw).toLocaleString('ko-KR')}
-            </span>
-          </div>
+        <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${T.divider}` }}>
+          <span className="text-[11px] tabular-nums" style={{ color: T.textMuted }}>
+            연 배당 {divInfo.yieldPct.toFixed(1)}% · 월 예상 ₩{Math.round(divInfo.monthlyKrw).toLocaleString('ko-KR')}
+          </span>
         </div>
       )}
     </div>
@@ -396,7 +399,7 @@ export default function Portfolio() {
           {treemapData.length > 0 ? (
             <>
               <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
-                {Object.entries(MARKET_COLOR).map(([market, color]) => (
+                {Object.entries(MARKET_COLOR).filter(([m]) => m === '미국' || m === '국내').map(([market, color]) => (
                   <div key={market} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
                     <span className="text-[11px]" style={{ color: T.textMuted }}>{market}</span>

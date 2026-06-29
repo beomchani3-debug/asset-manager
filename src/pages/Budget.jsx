@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import useCashFlowStore from '../store/useCashFlowStore'
+import useBudgetStore from '../store/useBudgetStore'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_TABS = ['수입', '고정비', '변동지출']
@@ -255,15 +256,113 @@ function AddModal({ onClose, onSave }) {
   )
 }
 
+// ─── Budget progress bar color ───────────────────────────────────────────────
+function budgetBarColor(usedPct) {
+  if (usedPct >= 90) return '#E05252'
+  if (usedPct >= 70) return '#E07820'
+  return '#C9A84C'
+}
+
+// ─── Budget settings modal ────────────────────────────────────────────────────
+function BudgetSettingsModal({ onClose }) {
+  const { budgets, setBudgets } = useBudgetStore()
+  const [visible, setVisible]   = useState(false)
+  const [local, setLocal]       = useState(() => {
+    const init = {}
+    for (const cats of [CATEGORIES['고정비'], CATEGORIES['변동지출']]) {
+      for (const cat of cats) {
+        if (cat !== '기타') init[cat] = budgets[cat] ? String(budgets[cat]) : ''
+      }
+    }
+    return init
+  })
+
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+
+  function close() { setVisible(false); setTimeout(onClose, 300) }
+
+  function handleSave() {
+    const map = {}
+    for (const [cat, val] of Object.entries(local)) {
+      map[cat] = parseFloat(val) || 0
+    }
+    setBudgets(map)
+    close()
+  }
+
+  const lbl = 'text-[11px] font-semibold text-slate-500 mb-1'
+  const inp = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-blue-400 transition-colors tabular-nums'
+
+  const sections = [
+    { label: '고정비', cats: CATEGORIES['고정비'].filter(c => c !== '기타') },
+    { label: '변동지출', cats: CATEGORIES['변동지출'].filter(c => c !== '기타') },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={close}>
+      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
+      <div
+        className={`relative w-full max-w-[430px] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 max-h-[88vh] overflow-y-auto no-scrollbar ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white z-10">
+          <div className="w-10 h-1 rounded-full bg-slate-200" />
+        </div>
+        <div className="px-5 pt-2 pb-12 space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[17px] font-bold text-slate-900">카테고리별 월 예산</h3>
+            <button onClick={close} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm active:opacity-70">✕</button>
+          </div>
+          <p className="text-[12px] text-slate-400">예산 0원 또는 빈칸 = 미설정 (경고 없음)</p>
+          {sections.map(({ label, cats }) => (
+            <div key={label}>
+              <p className="text-[12px] font-bold text-slate-600 mb-3 pb-1 border-b border-slate-100">{label}</p>
+              <div className="space-y-2.5">
+                {cats.map((cat) => (
+                  <div key={cat} className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 w-28 shrink-0">
+                      <span className="text-base">{icon(cat)}</span>
+                      <span className="text-[12px] font-semibold text-slate-700 truncate">{cat}</span>
+                    </div>
+                    <div className="flex-1 relative">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={local[cat] ?? ''}
+                        onChange={(e) => setLocal((prev) => ({ ...prev, [cat]: e.target.value }))}
+                        placeholder="0"
+                        className={inp}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">원</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={handleSave}
+            className="w-full py-3.5 bg-blue-600 text-white text-[14px] font-bold rounded-2xl active:opacity-80 transition-opacity"
+          >
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Budget (가계부) ─────────────────────────────────────────────────────────
 export default function Budget() {
-  const [ym, setYm]           = useState(currentYM())
-  const [catTab, setCatTab]   = useState('고정비')
+  const [ym, setYm]               = useState(currentYM())
+  const [catTab, setCatTab]       = useState('고정비')
   const [modalOpen, setModalOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const cashFlows   = useCashFlowStore((s) => s.cashFlows)
-  const addCashFlow = useCashFlowStore((s) => s.addCashFlow)
+  const cashFlows      = useCashFlowStore((s) => s.cashFlows)
+  const addCashFlow    = useCashFlowStore((s) => s.addCashFlow)
   const deleteCashFlow = useCashFlowStore((s) => s.deleteCashFlow)
+  const budgets        = useBudgetStore((s) => s.budgets)
 
   // 현재 월 필터
   const monthFlows = useMemo(
@@ -287,8 +386,12 @@ export default function Budget() {
     for (const c of filtered) map[c.category] = (map[c.category] ?? 0) + c.amount
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
-      .map(([cat, amt]) => ({ cat, amt, pct: total > 0 ? (amt / total) * 100 : 0 }))
-  }, [monthFlows, catTab])
+      .map(([cat, amt]) => {
+        const budget       = budgets[cat] ?? 0
+        const budgetUsedPct = budget > 0 ? (amt / budget) * 100 : null
+        return { cat, amt, pct: total > 0 ? (amt / total) * 100 : 0, budget, budgetUsedPct }
+      })
+  }, [monthFlows, catTab, budgets])
 
   // 날짜별 그룹 (내역 리스트)
   const grouped = useMemo(
@@ -315,14 +418,26 @@ export default function Budget() {
           </svg>
         </button>
         <span className="text-[15px] font-bold text-slate-800">{ymDisplay(ym)}</span>
-        <button
-          onClick={() => setYm(shiftMonth(ym, 1))}
-          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:opacity-70"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setYm(shiftMonth(ym, 1))}
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:opacity-70"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:opacity-70"
+            aria-label="예산 설정"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* ── 스크롤 영역 ─────────────────────────────────────────────────── */}
@@ -385,8 +500,12 @@ export default function Budget() {
                 <p className="text-center text-[12px] text-slate-400 py-5">{catTab} 내역 없음</p>
               ) : (
                 <div className="divide-y divide-slate-50">
-                  {catBreakdown.map(({ cat, amt, pct }) => {
-                    const c = TYPE_COLOR[catTab]
+                  {catBreakdown.map(({ cat, amt, pct, budget, budgetUsedPct }) => {
+                    const c          = TYPE_COLOR[catTab]
+                    const hasBudget  = budget > 0
+                    const isExceeded = hasBudget && budgetUsedPct >= 100
+                    const barW       = hasBudget ? Math.min(100, budgetUsedPct) : pct
+                    const barColor   = hasBudget ? budgetBarColor(budgetUsedPct) : undefined
                     return (
                       <div key={cat} className="px-4 py-3">
                         <div className="flex items-center justify-between mb-1.5">
@@ -394,19 +513,37 @@ export default function Budget() {
                             <span className="text-base leading-none">{icon(cat)}</span>
                             <span className="text-[13px] font-semibold text-slate-700">{cat}</span>
                           </div>
-                          <div className="text-right">
-                            <span className={`text-[13px] font-bold tabular-nums ${c.amt}`}>
-                              {Math.round(amt).toLocaleString('ko-KR')}원
-                            </span>
-                            <span className="text-[11px] text-slate-400 ml-1.5 tabular-nums">
-                              {pct.toFixed(0)}%
-                            </span>
+                          <div className="flex items-center gap-1.5">
+                            {isExceeded && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">초과</span>
+                            )}
+                            {hasBudget ? (
+                              <span className="text-[12px] tabular-nums text-slate-600">
+                                ₩{Math.round(amt).toLocaleString('ko-KR')}
+                                <span className="text-slate-400"> / ₩{Math.round(budget).toLocaleString('ko-KR')}</span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className={`text-[13px] font-bold tabular-nums ${c.amt}`}>
+                                  {Math.round(amt).toLocaleString('ko-KR')}원
+                                </span>
+                                <span className="text-[11px] text-slate-400 tabular-nums">
+                                  {pct.toFixed(0)}%
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-full ${c.bar} rounded-full transition-all duration-500`}
-                            style={{ width: `${pct}%` }}
+                            className={hasBudget ? '' : `${c.bar}`}
+                            style={{
+                              height: '100%',
+                              width: `${barW}%`,
+                              borderRadius: 9999,
+                              transition: 'width 0.5s ease',
+                              ...(hasBudget ? { backgroundColor: barColor } : {}),
+                            }}
                           />
                         </div>
                       </div>
@@ -449,6 +586,10 @@ export default function Budget() {
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
         />
+      )}
+
+      {settingsOpen && (
+        <BudgetSettingsModal onClose={() => setSettingsOpen(false)} />
       )}
     </div>
   )

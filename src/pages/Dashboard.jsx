@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
 import useTransactionStore from '../store/useTransactionStore'
 import useCashFlowStore from '../store/useCashFlowStore'
 import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
 import usePortfolioSnapshotStore from '../store/usePortfolioSnapshotStore'
+import useBudgetStore from '../store/useBudgetStore'
 import { usePriceService } from '../hooks/usePriceService'
 import { calcPnL } from '../utils/pnl'
 import { T, MARKET_COLOR } from '../theme'
@@ -14,6 +15,12 @@ import { T, MARKET_COLOR } from '../theme'
 const fmtKrw       = (n) => `${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
 const fmtKrwSigned = (n) => `${n >= 0 ? '+' : '-'}${Math.round(Math.abs(n)).toLocaleString('ko-KR')}원`
 const fmtPct       = (n, signed = true) => `${signed && n >= 0 ? '+' : ''}${n.toFixed(2)}%`
+const fmtYAxis     = (n) => {
+  if (!n) return '0'
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억`
+  const man = Math.round(n / 10000)
+  return `${man.toLocaleString('ko-KR')}만`
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SIDE_STYLE = {
@@ -47,13 +54,26 @@ function Card({ children, className = '' }) {
   )
 }
 
-// ─── Chart tooltip ────────────────────────────────────────────────────────────
-function ChartTooltip({ active, payload, label }) {
+// ─── Alloc donut tooltip ──────────────────────────────────────────────────────
+function AllocTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const { market, value, pct } = payload[0].payload
+  return (
+    <div className="rounded-xl px-3 py-2 text-[11px]" style={{ backgroundColor: '#0A0A0A', border: `1px solid ${T.gold}`, color: T.textPrimary }}>
+      <p className="font-semibold">{market}</p>
+      <p style={{ color: T.textMuted }}>₩{Math.round(value).toLocaleString('ko-KR')}</p>
+      <p style={{ color: T.gold }}>{pct.toFixed(1)}%</p>
+    </div>
+  )
+}
+
+// ─── Asset chart tooltip ──────────────────────────────────────────────────────
+function AssetChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-xl px-3 py-2 text-[11px]" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, color: T.textPrimary }}>
+    <div className="rounded-xl px-3 py-2 text-[11px]" style={{ backgroundColor: '#0A0A0A', border: `1px solid ${T.gold}`, color: T.textPrimary }}>
       <p style={{ color: T.textMuted }}>{label}</p>
-      <p className="font-bold" style={{ color: T.goldLight }}>{fmtKrw(payload[0].value)}</p>
+      <p className="font-bold" style={{ color: T.goldLight }}>₩{Math.round(payload[0].value).toLocaleString('ko-KR')}</p>
     </div>
   )
 }
@@ -117,6 +137,7 @@ export default function Dashboard() {
   const prices            = usePriceStore((s) => s.prices)
   const { snapshots, saveSnapshot } = usePortfolioSnapshotStore()
   const { refreshAll, isLoading, lastUpdatedAt } = usePriceService()
+  const budgets = useBudgetStore((s) => s.budgets)
 
   // ── Date ─────────────────────────────────────────────────────────────────
   const today    = new Date()
@@ -191,6 +212,19 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
   }, [portfolio])
 
+  // ── Budget warning ────────────────────────────────────────────────────────
+  const overBudgetCats = useMemo(() => {
+    if (!Object.keys(budgets).length) return []
+    const thisMonthFlows = cashFlows.filter((c) => c.date.startsWith(thisYM) && c.type !== '수입')
+    const spendByCat = {}
+    for (const c of thisMonthFlows) spendByCat[c.category] = (spendByCat[c.category] ?? 0) + c.amount
+    return Object.entries(budgets)
+      .filter(([, budget]) => budget > 0)
+      .map(([cat, budget]) => ({ cat, budget, spent: spendByCat[cat] ?? 0, pct: (spendByCat[cat] ?? 0) / budget * 100 }))
+      .filter(({ pct }) => pct >= 90)
+      .sort((a, b) => b.pct - a.pct)
+  }, [cashFlows, thisYM, budgets])
+
   // ── Chart data (last 6 monthly snapshots) ─────────────────────────────────
   const chartData = useMemo(() => {
     const entries = Object.entries(snapshots).sort((a, b) => a[0].localeCompare(b[0])).slice(-6)
@@ -199,6 +233,13 @@ export default function Dashboard() {
       return { label: `${+m}월`, value }
     })
   }, [snapshots])
+
+  const momChange = useMemo(() => {
+    if (chartData.length < 2) return null
+    const last = chartData[chartData.length - 1].value
+    const prev = chartData[chartData.length - 2].value
+    return prev > 0 ? ((last - prev) / prev) * 100 : null
+  }, [chartData])
 
   // ── Recent transactions ───────────────────────────────────────────────────
   const recentTx = useMemo(
@@ -257,6 +298,19 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ① 예산 초과 경고 배너 */}
+      {overBudgetCats.length > 0 && (
+        <button
+          onClick={() => navigate('/budget')}
+          className="w-full text-left rounded-2xl px-4 py-3 active:opacity-80 transition-opacity"
+          style={{ backgroundColor: 'rgba(224,82,82,0.1)', border: `1px solid ${T.red}` }}
+        >
+          <p className="text-[12px] font-semibold leading-relaxed" style={{ color: T.red }}>
+            ⚠ {overBudgetCats.map((c) => c.pct >= 100 ? `${c.cat} 예산 초과` : `${c.cat} ${Math.round(c.pct)}% 도달`).join(' · ')}
+          </p>
+        </button>
+      )}
+
       {/* ② 총 평가금액 카드 */}
       <div
         className="rounded-2xl p-5 shadow-lg"
@@ -293,6 +347,58 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* ② 자산 추이 그래프 */}
+      {chartData.length > 1 && (
+        <div
+          className="rounded-2xl overflow-hidden p-4"
+          style={{ backgroundColor: '#111111', border: `0.5px solid ${T.goldDim}` }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: T.textMuted }}>자산 추이</p>
+            {momChange !== null && (
+              <span className="text-[12px] font-bold tabular-nums" style={{ color: momChange >= 0 ? T.green : T.red }}>
+                {momChange >= 0 ? '+' : ''}{momChange.toFixed(1)}% 전월 대비
+              </span>
+            )}
+          </div>
+          <div className="h-36">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={T.gold} stopOpacity={0.10} />
+                    <stop offset="95%" stopColor={T.gold} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: T.textMuted, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: T.textMuted, fontSize: 9 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={fmtYAxis}
+                  width={40}
+                />
+                <Tooltip content={<AssetChartTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke={T.gold}
+                  strokeWidth={2}
+                  fill="url(#goldGrad)"
+                  dot={{ fill: T.gold, r: 3 }}
+                  activeDot={{ fill: T.goldLight, r: 5 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* ③ 손익 요약 카드 */}
       {holdings.length > 0 && (
@@ -352,37 +458,6 @@ export default function Dashboard() {
             </span>
           </div>
         </Card>
-      )}
-
-      {/* ⑤ 자산 추이 그래프 */}
-      {chartData.length >= 2 && (
-        <section>
-          <SectionHeader title="자산 추이 (월별)" />
-          <Card className="p-4">
-            <div className="h-36">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fill: T.textMuted, fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis hide />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke={T.gold}
-                    strokeWidth={2}
-                    dot={{ fill: T.gold, r: 3 }}
-                    activeDot={{ fill: T.goldLight, r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </section>
       )}
 
       {/* ⑥ 이번달 현금흐름 */}
@@ -449,29 +524,57 @@ export default function Dashboard() {
         <SectionHeader title="자산 배분 (시장별)" />
         <Card className="p-4">
           {allocation.length > 0 ? (
-            <>
-              <div className="flex rounded-full overflow-hidden h-3 mb-4 gap-px">
-                {allocation.map((item) => (
-                  <div key={item.market} style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
-                ))}
+            <div className="flex items-center gap-4">
+              <div style={{ width: 150, height: 150, flexShrink: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={allocation}
+                      innerRadius={46}
+                      outerRadius={68}
+                      dataKey="value"
+                      stroke="none"
+                      paddingAngle={2}
+                    >
+                      {allocation.map((item, i) => (
+                        <Cell key={i} fill={item.color} />
+                      ))}
+                      <Label
+                        content={({ viewBox }) => {
+                          const { cx, cy } = viewBox
+                          return (
+                            <g>
+                              <text x={cx} y={cy - 5} textAnchor="middle" dominantBaseline="middle" fill={T.goldLight} fontSize={12} fontWeight="bold" fontFamily="system-ui, sans-serif">
+                                {fmtYAxis(portfolio.totalMarketValue)}
+                              </text>
+                              <text x={cx} y={cy + 12} textAnchor="middle" dominantBaseline="middle" fill={T.textMuted} fontSize={10} fontFamily="system-ui, sans-serif">
+                                총 자산
+                              </text>
+                            </g>
+                          )
+                        }}
+                        position="center"
+                      />
+                    </Pie>
+                    <Tooltip content={<AllocTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-              <div className="space-y-2.5">
+              <div className="flex-1 space-y-2.5">
                 {allocation.map((item) => (
-                  <div key={item.market} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm" style={{ color: T.textPrimary }}>{item.market}</span>
+                  <div key={item.market}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-[12px] font-semibold" style={{ color: T.textPrimary }}>{item.market}</span>
+                      </div>
+                      <span className="text-[11px] font-bold tabular-nums" style={{ color: T.textPrimary }}>{item.pct.toFixed(1)}%</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs tabular-nums" style={{ color: T.textMuted }}>{fmtKrw(item.value)}</span>
-                      <span className="text-xs font-semibold tabular-nums w-11 text-right" style={{ color: T.textPrimary }}>
-                        {item.pct.toFixed(1)}%
-                      </span>
-                    </div>
+                    <p className="text-[10px] tabular-nums pl-3.5" style={{ color: T.textMuted }}>₩{Math.round(item.value).toLocaleString('ko-KR')}</p>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
             <EmptyHint text="보유 종목을 추가해보세요" />
           )}

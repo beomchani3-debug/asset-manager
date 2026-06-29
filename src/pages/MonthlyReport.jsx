@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 import useTransactionStore from '../store/useTransactionStore'
 import useCashFlowStore from '../store/useCashFlowStore'
 import { calcPnL } from '../utils/pnl'
@@ -140,6 +140,33 @@ export default function MonthlyReport() {
     return map
   }, [divTxs])
 
+  // Annual dividend bar chart data
+  const year     = ym.split('-')[0]
+  const prevYear = String(Number(year) - 1)
+
+  const annualDivData = useMemo(() => {
+    const yearTxs = transactions.filter((tx) => tx.side === '배당' && tx.date.startsWith(year))
+    const byMonth = {}
+    for (const tx of yearTxs) {
+      const m = tx.date.slice(5, 7)
+      byMonth[m] = (byMonth[m] ?? 0) + tx.krwAmount
+    }
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = String(i + 1).padStart(2, '0')
+      return { label: `${i + 1}월`, value: byMonth[m] ?? 0 }
+    })
+  }, [transactions, year])
+
+  const thisYearDivTotal = useMemo(
+    () => transactions.filter((tx) => tx.side === '배당' && tx.date.startsWith(year)).reduce((s, tx) => s + tx.krwAmount, 0),
+    [transactions, year]
+  )
+  const prevYearDivTotal = useMemo(
+    () => transactions.filter((tx) => tx.side === '배당' && tx.date.startsWith(prevYear)).reduce((s, tx) => s + tx.krwAmount, 0),
+    [transactions, prevYear]
+  )
+  const yoyGrowth = prevYearDivTotal > 0 ? ((thisYearDivTotal - prevYearDivTotal) / prevYearDivTotal) * 100 : null
+
   const buyTxs    = mTx.filter((tx) => tx.side === '매수')
   const sellTxs   = mTx.filter((tx) => tx.side === '매도')
   const investment = buyTxs.reduce((s, tx) => s + tx.krwAmount, 0)
@@ -261,6 +288,62 @@ export default function MonthlyReport() {
             )}
           </Card>
         </div>
+
+        {/* ── Annual dividend bar chart ────────────────────────────── */}
+        {thisYearDivTotal > 0 && (
+          <div>
+            <SectionTitle title={`${year}년 월별 배당금`} />
+            <Card className="p-4">
+              <div className="h-36">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={annualDivData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="label" tick={{ fill: T.textMuted, fontSize: 9 }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length || !payload[0].value) return null
+                        return (
+                          <div className="rounded-xl px-3 py-2 text-[11px]" style={{ backgroundColor: T.card, border: `1px solid ${T.gold}`, color: T.textPrimary }}>
+                            <p style={{ color: T.textMuted }}>{label}</p>
+                            <p className="font-bold" style={{ color: T.green }}>{fmtKrw(payload[0].value)}</p>
+                          </div>
+                        )
+                      }}
+                    />
+                    <Bar dataKey="value" fill={T.gold} radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ── YoY dividend growth ───────────────────────────────────── */}
+        {yoyGrowth !== null && (
+          <div>
+            <SectionTitle title="전년 대비 배당 성장" />
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[13px] font-bold" style={{ color: T.textPrimary }}>
+                  {fmtPct(yoyGrowth)} {yoyGrowth >= 0 ? '성장' : '감소'}
+                </span>
+                <span className="text-[13px] font-bold" style={{ color: yoyGrowth >= 0 ? T.green : T.red }}>
+                  {yoyGrowth >= 0 ? '▲' : '▼'} 전년 대비
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl p-3" style={{ backgroundColor: T.inputBg }}>
+                  <p className="text-[10px] mb-1" style={{ color: T.textMuted }}>{year}년 누적</p>
+                  <p className="text-[14px] font-bold tabular-nums" style={{ color: T.gold }}>{fmtKrw(thisYearDivTotal)}</p>
+                </div>
+                <div className="rounded-xl p-3" style={{ backgroundColor: T.inputBg }}>
+                  <p className="text-[10px] mb-1" style={{ color: T.textMuted }}>{prevYear}년 누적</p>
+                  <p className="text-[14px] font-bold tabular-nums" style={{ color: T.textMuted }}>{fmtKrw(prevYearDivTotal)}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* ── Trade activity ────────────────────────────────────────── */}
         <div>
