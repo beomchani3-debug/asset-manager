@@ -4,11 +4,12 @@ import Toast from './Toast'
 import { T } from '../theme'
 
 const PAGE_TITLES = {
-  '/dashboard':    '대시보드',
-  '/portfolio':    '포트폴리오',
-  '/transactions': '거래기록',
-  '/budget':       '가계부',
-  '/settings':     '설정',
+  '/dashboard':      '대시보드',
+  '/portfolio':      '포트폴리오',
+  '/transactions':   '거래기록',
+  '/budget':         '가계부',
+  '/report':         '리포트',
+  '/settings':       '설정',
 }
 
 export default function Layout() {

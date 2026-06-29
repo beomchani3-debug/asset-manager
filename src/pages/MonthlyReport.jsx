@@ -169,7 +169,10 @@ export default function MonthlyReport() {
 
   const buyTxs    = mTx.filter((tx) => tx.side === '매수')
   const sellTxs   = mTx.filter((tx) => tx.side === '매도')
-  const investment = buyTxs.reduce((s, tx) => s + tx.krwAmount, 0)
+  const investment = useMemo(
+    () => transactions.filter((tx) => tx.side === '매수' && tx.date.startsWith(ym)).reduce((s, tx) => s + tx.krwAmount, 0),
+    [transactions, ym]
+  )
 
   // Realized PnL
   const allPnl            = useMemo(() => calcPnL(transactions), [transactions])
