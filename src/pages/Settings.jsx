@@ -115,7 +115,7 @@ function FixedExpenseSection() {
   }
 
   return (
-    <Section title="고정비 관리">
+    <Section title="반복(고정비) 관리">
       <div className="px-4 py-3 space-y-2">
 
         {/* 항목 목록 */}
@@ -177,7 +177,7 @@ function FixedExpenseSection() {
                     {fe.name}
                   </span>
                   <span className="text-[11px]" style={{ color: T.textMuted }}>
-                    매달 {fe.day}일 · {fe.amount.toLocaleString('ko-KR')}원
+                    매달 {fe.day}일 · {fe.amount.toLocaleString('ko-KR')}원 · {fe.isActive ? '사용중' : '일시정지'}
                   </span>
                 </div>
 
@@ -245,6 +245,7 @@ function FixedExpenseSection() {
                 />
               </div>
             </div>
+            <p className="text-[10px]" style={{ color: T.textMuted }}>31일 선택 시 해당 월 마지막 날에 자동 생성돼요</p>
             <div className="flex gap-2 pt-0.5">
               <button
                 onClick={closeForm}
@@ -428,7 +429,7 @@ export default function Settings() {
         </Section>
       )}
 
-      {/* 고정비 관리 */}
+      {/* 반복(고정비) 관리 */}
       <FixedExpenseSection />
 
       {/* 목표 설정 */}

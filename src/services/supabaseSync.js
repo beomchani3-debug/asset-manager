@@ -113,25 +113,27 @@ export async function clearTransactions() {
 
 function cfToRow(cf, userId) {
   return {
-    id:         cf.id,
-    user_id:    userId,
-    date:       cf.date,
-    type:       cf.type,
-    category:   cf.category,
-    amount:     Number(cf.amount) || 0,
-    memo:       cf.memo ?? '',
-    updated_at: new Date().toISOString(),
+    id:           cf.id,
+    user_id:      userId,
+    date:         cf.date,
+    type:         cf.type,
+    category:     cf.category,
+    amount:       Number(cf.amount) || 0,
+    memo:         cf.memo ?? '',
+    recurring_id: cf.recurringId ?? null,
+    updated_at:   new Date().toISOString(),
   }
 }
 
 function rowToCf(row) {
   return {
-    id:       row.id,
-    date:     row.date,
-    type:     row.type,
-    category: row.category,
-    amount:   Number(row.amount),
-    memo:     row.memo,
+    id:          row.id,
+    date:        row.date,
+    type:        row.type,
+    category:    row.category,
+    amount:      Number(row.amount),
+    memo:        row.memo,
+    ...(row.recurring_id ? { recurringId: row.recurring_id } : {}),
   }
 }
 

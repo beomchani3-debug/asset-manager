@@ -34,10 +34,14 @@ create table if not exists cash_flows (
   category     text        not null,
   amount       numeric     not null default 0,
   memo         text        default '',
+  recurring_id uuid,                         -- 반복 고정비에서 자동/연결 생성된 경우 템플릿 id
   user_id      uuid,
   created_at   timestamptz default now(),
   updated_at   timestamptz default now()
 );
+
+-- 기존 테이블에 반복 고정비 컬럼 추가 (이미 테이블이 있는 경우)
+alter table cash_flows add column if not exists recurring_id uuid;
 
 -- 3) 앱 설정 (배당목표, 환율, 카테고리 등)
 create table if not exists app_settings (

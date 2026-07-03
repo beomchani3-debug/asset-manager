@@ -44,11 +44,22 @@
 /**
  * @typedef {Object} CashFlow
  * @property {string}       id
- * @property {string}       date      YYYY-MM-DD
+ * @property {string}       date         YYYY-MM-DD
  * @property {CashFlowType} type
  * @property {string}       category
- * @property {number}       amount    원화
+ * @property {number}       amount       원화
  * @property {string}       [memo]
+ * @property {string}       [recurringId] 반복 고정비 템플릿 id (자동/연결 생성된 내역에만 존재)
+ */
+
+/**
+ * @typedef {Object} FixedExpense
+ * @property {string}  id
+ * @property {string}  name
+ * @property {number}  amount
+ * @property {number}  day        매달 반복일 (1~31, 31은 말일로 처리)
+ * @property {boolean} isActive
+ * @property {string}  createdAt
  */
 
 /**

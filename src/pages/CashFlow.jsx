@@ -2,6 +2,10 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import useCashFlowStore from '../store/useCashFlowStore'
 import useSettingsStore from '../store/useSettingsStore'
+import useFixedExpenseStore from '../store/useFixedExpenseStore'
+import useToastStore from '../store/useToastStore'
+import { useRecurringSuggestions } from '../hooks/useRecurringSuggestions'
+import { currentYearMonth } from '../utils/date'
 import { T } from '../theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -110,7 +114,15 @@ function CfRow({ cf, onEdit, onDelete }) {
             {catIcon(cf.category)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: T.textPrimary }}>{cf.category}</p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: T.textPrimary }}>{cf.category}</p>
+              {cf.recurringId && (
+                <span
+                  className="shrink-0 text-[9px] font-bold px-1.5 py-[1px] rounded-full leading-tight"
+                  style={{ backgroundColor: 'rgba(91,155,213,0.15)', color: T.blue }}
+                >반복</span>
+              )}
+            </div>
             {cf.memo && <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: T.textMuted }}>{cf.memo}</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -291,6 +303,17 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
   const [memo,       setMemo]       = useState(initialCf?.memo ?? '')
   const [confirmDel, setConfirmDel] = useState(false)
 
+  const fixedExpenses     = useFixedExpenseStore((s) => s.fixedExpenses)
+  const addFixedExpense   = useFixedExpenseStore((s) => s.addFixedExpense)
+  const updateFixedExpense = useFixedExpenseStore((s) => s.updateFixedExpense)
+  const markInserted      = useFixedExpenseStore((s) => s.markInserted)
+  const linkedFe = initialCf?.recurringId ? fixedExpenses.find((fe) => fe.id === initialCf.recurringId) : null
+
+  const [repeatOn,  setRepeatOn]  = useState(!!linkedFe)
+  const [repeatDay, setRepeatDay] = useState(
+    String(linkedFe?.day ?? Number((initialCf?.date ?? todayIso()).slice(8, 10)))
+  )
+
   const isFirstMount = useRef(true)
   useEffect(() => {
     if (isFirstMount.current) { isFirstMount.current = false; return }
@@ -305,7 +328,22 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
 
   function handleSave() {
     const finalCat = category === '기타' && customCat.trim() ? customCat.trim() : category
-    onSave({ date, type, category: finalCat, amount: parseFloat(amount) || 0, memo: memo.trim() })
+    const amt = parseFloat(amount) || 0
+
+    let recurringId
+    if (type === '고정비' && repeatOn) {
+      const day = Math.min(31, Math.max(1, parseInt(repeatDay, 10) || 1))
+      if (linkedFe) {
+        updateFixedExpense(linkedFe.id, { name: finalCat, amount: amt, day })
+        recurringId = linkedFe.id
+      } else {
+        const fe = addFixedExpense({ name: finalCat, amount: amt, day, isActive: true })
+        recurringId = fe.id
+        markInserted(currentYearMonth(), fe.id)
+      }
+    }
+
+    onSave({ date, type, category: finalCat, amount: amt, memo: memo.trim(), recurringId })
     close()
   }
 
@@ -426,6 +464,43 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
             )}
           </div>
 
+          {/* 매달 반복 */}
+          {type === '고정비' && (
+            <div className="space-y-2">
+              <div
+                className="rounded-xl px-3 py-2.5 flex items-center justify-between"
+                style={{ backgroundColor: T.inputBg, border: `1px solid ${T.inputBorder}` }}
+              >
+                <div>
+                  <p className="text-[12px] font-bold" style={{ color: T.textPrimary }}>매달 반복</p>
+                  <p className="text-[10px]" style={{ color: T.textMuted }}>켜면 매달 자동으로 내역이 생성돼요</p>
+                </div>
+                <button
+                  onClick={() => setRepeatOn((v) => !v)}
+                  className="shrink-0 w-9 h-5 rounded-full relative transition-colors"
+                  style={{ backgroundColor: repeatOn ? T.gold : T.inputBorder }}
+                >
+                  <span
+                    className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+                    style={{ backgroundColor: '#0A0A0A', left: repeatOn ? 'calc(100% - 1.1rem)' : '0.1rem' }}
+                  />
+                </button>
+              </div>
+              {repeatOn && (
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>매달 며칠</label>
+                  <input
+                    type="number" inputMode="numeric" min="1" max="31"
+                    value={repeatDay} onChange={(e) => setRepeatDay(e.target.value)}
+                    className="w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+                    style={inpStyle}
+                  />
+                  <p className="text-[10px] mt-1" style={{ color: T.textMuted }}>31일 선택 시 해당 월 마지막 날에 생성돼요</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 메모 */}
           <div>
             <label className="block text-[11px] font-semibold mb-1.5" style={{ color: T.textMuted }}>메모 (선택)</label>
@@ -502,6 +577,16 @@ export default function CashFlow() {
   const deleteCashFlow   = useCashFlowStore((s) => s.deleteCashFlow)
   const storedCats       = useSettingsStore((s) => s.settings.cashFlowCategories)
   const setCashFlowCats  = useSettingsStore((s) => s.setCashFlowCategories)
+
+  const suggestions       = useRecurringSuggestions()
+  const addFixedExpense   = useFixedExpenseStore((s) => s.addFixedExpense)
+  const dismissSuggestion = useFixedExpenseStore((s) => s.dismissSuggestion)
+  const pushToast         = useToastStore((s) => s.push)
+
+  function acceptSuggestion(sg) {
+    addFixedExpense({ name: sg.name, amount: sg.amount, day: sg.day, isActive: true })
+    pushToast(`"${sg.name}" 반복으로 등록했어요`, 'success')
+  }
 
   const CATS = storedCats ?? DEFAULT_CATEGORIES
 
@@ -607,6 +692,36 @@ export default function CashFlow() {
 
       {/* ── 스크롤 영역 */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
+        {suggestions.length > 0 && (
+          <div className="p-4 pb-0 space-y-2">
+            {suggestions.map((sg) => (
+              <div
+                key={sg.name}
+                className="rounded-2xl p-3.5 flex items-center justify-between gap-3"
+                style={{ backgroundColor: 'rgba(201,168,76,0.08)', border: `1px solid ${T.gold}` }}
+              >
+                <div className="min-w-0">
+                  <p className="text-[12px] font-bold" style={{ color: T.goldLight }}>"{sg.name}" 반복으로 등록할까요?</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: T.textMuted }}>
+                    최근 {sg.months}개월 연속 등록됨 · 매달 {sg.day}일 · {Math.round(sg.amount).toLocaleString('ko-KR')}원
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => dismissSuggestion(sg.name)}
+                    className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg active:opacity-80"
+                    style={{ backgroundColor: T.inputBg, color: T.textMuted }}
+                  >무시</button>
+                  <button
+                    onClick={() => acceptSuggestion(sg)}
+                    className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg active:opacity-80"
+                    style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+                  >등록</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {monthFlows.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
             <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"

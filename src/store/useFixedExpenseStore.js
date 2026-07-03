@@ -10,9 +10,13 @@ const useFixedExpenseStore = create(
       /** { 'YYYY-MM': string[] } — inserted fixed expense IDs per month */
       insertedLog: {},
 
+      /** 반복 등록 제안을 무시한 카테고리명 목록 */
+      dismissedSuggestions: [],
+
       addFixedExpense: (fe) => {
         const item = { ...fe, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
         set({ fixedExpenses: [...get().fixedExpenses, item] })
+        return item
       },
 
       updateFixedExpense: (id, updates) => {
@@ -37,6 +41,13 @@ const useFixedExpenseStore = create(
 
       isInserted: (yearMonth, id) => {
         return (get().insertedLog[yearMonth] ?? []).includes(id)
+      },
+
+      dismissSuggestion: (name) => {
+        const list = get().dismissedSuggestions
+        if (!list.includes(name)) {
+          set({ dismissedSuggestions: [...list, name] })
+        }
       },
     }),
     { name: 'fixed-expenses-v1' }
