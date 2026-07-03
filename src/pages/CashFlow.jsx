@@ -26,7 +26,14 @@ const CAT_ICON = {
   생필품: '🧴', 의료비: '🏥', 경조사비: '🎁', 환전: '💱',
   기타: '📌',
 }
-const catIcon = (cat) => CAT_ICON[cat] ?? '📌'
+const catIcon = (cat, custom = {}) => custom[cat] ?? CAT_ICON[cat] ?? '📌'
+
+const ICON_CHOICES = [
+  '📌', '💰', '💵', '💳', '🏦', '📈', '📊', '🧾',
+  '🍱', '🍽️', '☕', '🛒', '🧴', '👕', '💄', '🏥',
+  '🚇', '⛽', '🚗', '✈️', '🏠', '🎁', '🎬', '🎮',
+  '📱', '💡', '⚡', '📚', '🏋️', '⚽', '🐶', '🎵',
+]
 
 const STYLE = {
   수입:    { card: { backgroundColor: 'rgba(76,175,80,0.08)' },  label: { color: T.green }, amt: { color: T.green }, bar: { backgroundColor: T.green }, badge: { backgroundColor: 'rgba(76,175,80,0.12)', color: T.green }   },
@@ -62,7 +69,7 @@ function groupByDate(list) {
 }
 
 // ─── CfRow ────────────────────────────────────────────────────────────────────
-function CfRow({ cf, onEdit, onDelete }) {
+function CfRow({ cf, onEdit, onDelete, catIcons }) {
   const [revealed, setRevealed] = useState(false)
   const startX    = useRef(0)
   const longTimer = useRef(null)
@@ -111,7 +118,7 @@ function CfRow({ cf, onEdit, onDelete }) {
       >
         <div className="flex items-center gap-3 px-4 py-3.5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0" style={s.card}>
-            {catIcon(cf.category)}
+            {catIcon(cf.category, catIcons)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -138,18 +145,21 @@ function CfRow({ cf, onEdit, onDelete }) {
 }
 
 // ─── CategoryEditSheet ────────────────────────────────────────────────────────
-function CategoryEditSheet({ current, onSave, onClose }) {
+function CategoryEditSheet({ current, currentIcons, onSave, onClose }) {
   const [visible,    setVisible]    = useState(false)
   const [activeType, setActiveType] = useState('수입')
   const [cats,       setCats]       = useState({ ...current })
+  const [icons,      setIcons]      = useState({ ...currentIcons })
   const [newCat,     setNewCat]     = useState('')
+  const [newIcon,    setNewIcon]    = useState('📌')
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [editIdx,    setEditIdx]    = useState(null)
   const [editVal,    setEditVal]    = useState('')
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
 
   function close() { setVisible(false); setTimeout(onClose, 300) }
-  function save()  { onSave(cats); close() }
+  function save()  { onSave(cats, icons); close() }
 
   function addCat() {
     const t = newCat.trim()
@@ -159,7 +169,10 @@ function CategoryEditSheet({ current, onSave, onClose }) {
     if (ki >= 0) list.splice(ki, 0, t)
     else list.push(t)
     setCats({ ...cats, [activeType]: list })
+    setIcons({ ...icons, [t]: newIcon })
     setNewCat('')
+    setNewIcon('📌')
+    setPickerOpen(false)
   }
 
   function deleteCat(idx) {
@@ -238,7 +251,7 @@ function CategoryEditSheet({ current, onSave, onClose }) {
                   className="flex-1 text-left flex items-center gap-2.5 rounded-xl px-3 py-2.5 active:opacity-80"
                   style={{ backgroundColor: T.inputBg }}
                 >
-                  <span className="text-base leading-none">{catIcon(cat)}</span>
+                  <span className="text-base leading-none">{catIcon(cat, icons)}</span>
                   <span className="text-[13px] font-semibold" style={{ color: T.textPrimary }}>{cat}</span>
                   {cat !== '기타' && <span className="ml-auto text-[11px] shrink-0" style={{ color: T.textMuted }}>탭하여 수정</span>}
                 </button>
@@ -257,23 +270,52 @@ function CategoryEditSheet({ current, onSave, onClose }) {
             </div>
           ))}
         </div>
-        <div className="shrink-0 px-5 py-3 flex gap-2" style={{ borderTop: `1px solid ${T.divider}` }}>
-          <input
-            value={newCat}
-            onChange={(e) => setNewCat(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addCat() }}
-            placeholder="새 카테고리 이름"
-            className="flex-1 border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
-            style={{ backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }}
-          />
-          <button
-            onClick={addCat}
-            disabled={!newCat.trim()}
-            className="px-4 py-2.5 text-[13px] font-bold rounded-xl disabled:opacity-40 active:opacity-80 shrink-0"
-            style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
-          >
-            추가
-          </button>
+        <div className="relative shrink-0" style={{ borderTop: `1px solid ${T.divider}` }}>
+          {pickerOpen && (
+            <div
+              className="absolute bottom-full left-5 right-5 mb-2 p-3 rounded-2xl grid grid-cols-8 gap-1.5 shadow-xl"
+              style={{ backgroundColor: T.inputBg, border: `1px solid ${T.gold}` }}
+            >
+              {ICON_CHOICES.map((ic) => (
+                <button
+                  key={ic}
+                  type="button"
+                  onClick={() => { setNewIcon(ic); setPickerOpen(false) }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-base active:opacity-70"
+                  style={ic === newIcon ? { backgroundColor: T.gold } : {}}
+                >
+                  {ic}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="px-5 py-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPickerOpen((v) => !v)}
+              aria-label="아이콘 선택"
+              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0 active:opacity-80"
+              style={{ backgroundColor: T.inputBg, border: `1px solid ${T.inputBorder}` }}
+            >
+              {newIcon}
+            </button>
+            <input
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addCat() }}
+              placeholder="새 카테고리 이름"
+              className="flex-1 border rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C9A84C] transition-colors"
+              style={{ backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.textPrimary }}
+            />
+            <button
+              onClick={addCat}
+              disabled={!newCat.trim()}
+              className="px-4 py-2.5 text-[13px] font-bold rounded-xl disabled:opacity-40 active:opacity-80 shrink-0"
+              style={{ backgroundColor: T.gold, color: '#0A0A0A' }}
+            >
+              추가
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -281,7 +323,7 @@ function CategoryEditSheet({ current, onSave, onClose }) {
 }
 
 // ─── CfModal ──────────────────────────────────────────────────────────────────
-function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
+function CfModal({ onClose, onSave, onDelete, categories, catIcons, initialCf }) {
   const isEdit = !!initialCf
 
   const initType    = initialCf?.type ?? '수입'
@@ -451,7 +493,7 @@ function CfModal({ onClose, onSave, onDelete, categories, initialCf }) {
                     : { backgroundColor: T.inputBg, color: T.textMuted, borderColor: T.inputBorder }
                   }
                 >
-                  <span>{catIcon(c)}</span>
+                  <span>{catIcon(c, catIcons)}</span>
                   <span>{c}</span>
                 </button>
               ))}
@@ -576,6 +618,7 @@ export default function CashFlow() {
   const updateCashFlow   = useCashFlowStore((s) => s.updateCashFlow)
   const deleteCashFlow   = useCashFlowStore((s) => s.deleteCashFlow)
   const storedCats       = useSettingsStore((s) => s.settings.cashFlowCategories)
+  const storedIcons      = useSettingsStore((s) => s.settings.cashFlowCatIcons) ?? {}
   const setCashFlowCats  = useSettingsStore((s) => s.setCashFlowCategories)
 
   const suggestions       = useRecurringSuggestions()
@@ -813,7 +856,8 @@ export default function CashFlow() {
                         {items.map((cf) => (
                           <CfRow key={cf.id} cf={cf}
                             onEdit={() => openEdit(cf)}
-                            onDelete={() => deleteCashFlow(cf.id)} />
+                            onDelete={() => deleteCashFlow(cf.id)}
+                            catIcons={storedIcons} />
                         ))}
                       </div>
                     ))}
@@ -858,7 +902,7 @@ export default function CashFlow() {
                         >
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-base leading-none">{catIcon(cat)}</span>
+                              <span className="text-base leading-none">{catIcon(cat, storedIcons)}</span>
                               <span className="text-[13px] font-semibold" style={{ color: T.textPrimary }}>{cat}</span>
                             </div>
                             <div className="text-right">
@@ -897,7 +941,8 @@ export default function CashFlow() {
                         <div key={cf.id} style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}>
                           <CfRow cf={cf}
                             onEdit={() => openEdit(cf)}
-                            onDelete={() => deleteCashFlow(cf.id)} />
+                            onDelete={() => deleteCashFlow(cf.id)}
+                            catIcons={storedIcons} />
                         </div>
                       ))}
                     </div>
@@ -926,11 +971,17 @@ export default function CashFlow() {
           onSave={handleSave}
           onDelete={handleDelete}
           categories={CATS}
+          catIcons={storedIcons}
           initialCf={editingCf}
         />
       )}
       {editCatsOpen && (
-        <CategoryEditSheet current={CATS} onSave={(cats) => setCashFlowCats(cats)} onClose={() => setEditCatsOpen(false)} />
+        <CategoryEditSheet
+          current={CATS}
+          currentIcons={storedIcons}
+          onSave={(cats, icons) => setCashFlowCats(cats, icons)}
+          onClose={() => setEditCatsOpen(false)}
+        />
       )}
     </div>
   )

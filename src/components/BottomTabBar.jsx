@@ -66,7 +66,7 @@ const tabs = [
 export default function BottomTabBar() {
   return (
     <nav
-      className="shrink-0 border-t z-50"
+      className="shrink-0 border-t z-40"
       style={{ backgroundColor: T.tabBg, borderColor: T.gold }}
     >
       <div className="flex items-center justify-around h-16 px-1 pb-safe">

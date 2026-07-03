@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   fxRates: { USD: 0, JPY: 0 },
   manualPrices: {},
   cashFlowCategories: null, // null → CashFlow uses built-in defaults
+  cashFlowCatIcons: {}, // 카테고리 이름 → 이모지 (사용자가 추가/변경한 아이콘)
 }
 
 const useSettingsStore = create(
@@ -50,8 +51,12 @@ const useSettingsStore = create(
         upsertSettings(next).catch(console.error)
       },
 
-      setCashFlowCategories: (cats) => {
-        const next = { ...get().settings, cashFlowCategories: cats }
+      setCashFlowCategories: (cats, icons) => {
+        const next = {
+          ...get().settings,
+          cashFlowCategories: cats,
+          ...(icons ? { cashFlowCatIcons: { ...get().settings.cashFlowCatIcons, ...icons } } : {}),
+        }
         set({ settings: next })
         upsertSettings(next).catch(console.error)
       },
