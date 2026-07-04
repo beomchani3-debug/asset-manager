@@ -9,12 +9,12 @@ import useAuthStore from '../store/useAuthStore'
  * - 탭/화면이 다시 포커스될 때 자동으로 재동기화한다
  */
 export function useDataSync() {
-  const user = useAuthStore((s) => s.user)
+  const userId = useAuthStore((s) => s.user?.id)
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !user) return
+    if (!isSupabaseConfigured || !userId) return
     loadFromCloud().catch(console.error)
-  }, [user])
+  }, [userId])
 
   useEffect(() => {
     if (!isSupabaseConfigured) return

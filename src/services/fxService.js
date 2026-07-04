@@ -20,7 +20,7 @@ export async function fetchFxRates() {
 
     const USD = rates.KRW
 
-    useSettingsStore.getState().updateSettings({
+    await useSettingsStore.getState().updateSettings({
       fxRates: { ...useSettingsStore.getState().settings.fxRates, USD },
       fxRatesUpdatedAt: new Date().toISOString(),
     })

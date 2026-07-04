@@ -6,6 +6,19 @@ import {
   deleteTransactionRow,
   clearTransactions,
 } from '../services/supabaseSync'
+import { isSupabaseConfigured } from '../lib/supabase'
+
+function mergeById(localItems, cloudItems) {
+  const merged = new Map()
+  for (const item of localItems) merged.set(item.id, item)
+  for (const item of cloudItems) merged.set(item.id, { ...merged.get(item.id), ...item })
+  return [...merged.values()]
+}
+
+async function syncIfConfigured(action) {
+  if (!isSupabaseConfigured) return
+  await action()
+}
 
 /**
  * 거래 목록으로부터 보유종목을 계산한다.
@@ -82,37 +95,64 @@ const useTransactionStore = create(
       /** @type {import('../types').Holding[]} */
       holdings: [],
 
-      addTransaction: (tx) => {
+      addTransaction: async (tx) => {
         const newTx = { ...tx, id: crypto.randomUUID() }
-        const transactions = [...get().transactions, newTx]
+        const prev = get().transactions
+        const transactions = [...prev, newTx]
         set({ transactions, holdings: calcHoldings(transactions) })
-        insertTransaction(newTx).catch(console.error)
+        try {
+          await syncIfConfigured(() => insertTransaction(newTx))
+          return newTx
+        } catch (err) {
+          set({ transactions: prev, holdings: calcHoldings(prev) })
+          throw err
+        }
       },
 
-      updateTransaction: (id, updates) => {
+      updateTransaction: async (id, updates) => {
+        const prev = get().transactions
         const merged = { ...get().transactions.find(t => t.id === id), ...updates }
         const transactions = get().transactions.map((t) =>
           t.id === id ? merged : t
         )
         set({ transactions, holdings: calcHoldings(transactions) })
-        updateTransactionRow(id, merged).catch(console.error)
+        try {
+          await syncIfConfigured(() => updateTransactionRow(id, merged))
+        } catch (err) {
+          set({ transactions: prev, holdings: calcHoldings(prev) })
+          throw err
+        }
       },
 
-      deleteTransaction: (id) => {
-        const transactions = get().transactions.filter((t) => t.id !== id)
+      deleteTransaction: async (id) => {
+        const prev = get().transactions
+        const transactions = prev.filter((t) => t.id !== id)
         set({ transactions, holdings: calcHoldings(transactions) })
-        deleteTransactionRow(id).catch(console.error)
+        try {
+          await syncIfConfigured(() => deleteTransactionRow(id))
+        } catch (err) {
+          set({ transactions: prev, holdings: calcHoldings(prev) })
+          throw err
+        }
       },
 
       /** 전체 초기화 (설정 페이지 "데이터 삭제" 용) */
-      clearAll: () => {
+      clearAll: async () => {
+        const prev = get().transactions
         set({ transactions: [], holdings: [] })
-        clearTransactions().catch(console.error)
+        try {
+          await syncIfConfigured(() => clearTransactions())
+        } catch (err) {
+          set({ transactions: prev, holdings: calcHoldings(prev) })
+          throw err
+        }
       },
 
       /** Supabase에서 불러온 데이터로 스토어를 교체한다 */
       loadFromCloud: (transactions) => {
-        set({ transactions, holdings: calcHoldings(transactions) })
+        if (!Array.isArray(transactions) || transactions.length === 0) return
+        const merged = mergeById(get().transactions, transactions)
+        set({ transactions: merged, holdings: calcHoldings(merged) })
       },
     }),
     { name: 'transactions-v2' }

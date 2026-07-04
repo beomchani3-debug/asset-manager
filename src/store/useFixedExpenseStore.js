@@ -28,9 +28,15 @@ const useFixedExpenseStore = create(
         })
       },
 
-      deleteFixedExpense: (id) => {
-        set({ fixedExpenses: get().fixedExpenses.filter((fe) => fe.id !== id) })
-        useCashFlowStore.getState().clearRecurringId(id)
+      deleteFixedExpense: async (id) => {
+        const prev = get().fixedExpenses
+        set({ fixedExpenses: prev.filter((fe) => fe.id !== id) })
+        try {
+          await useCashFlowStore.getState().clearRecurringId(id)
+        } catch (err) {
+          set({ fixedExpenses: prev })
+          throw err
+        }
       },
 
       markInserted: (yearMonth, id) => {

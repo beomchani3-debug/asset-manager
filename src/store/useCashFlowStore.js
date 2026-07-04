@@ -6,6 +6,19 @@ import {
   deleteCashFlowRow,
   clearCashFlows,
 } from '../services/supabaseSync'
+import { isSupabaseConfigured } from '../lib/supabase'
+
+function mergeById(localItems, cloudItems) {
+  const merged = new Map()
+  for (const item of localItems) merged.set(item.id, item)
+  for (const item of cloudItems) merged.set(item.id, { ...merged.get(item.id), ...item })
+  return [...merged.values()]
+}
+
+async function syncIfConfigured(action) {
+  if (!isSupabaseConfigured) return
+  await action()
+}
 
 const useCashFlowStore = create(
   persist(
@@ -13,25 +26,44 @@ const useCashFlowStore = create(
       /** @type {import('../types').CashFlow[]} */
       cashFlows: [],
 
-      addCashFlow: (cf) => {
+      addCashFlow: async (cf) => {
         const newCf = { ...cf, id: crypto.randomUUID() }
-        set({ cashFlows: [...get().cashFlows, newCf] })
-        insertCashFlow(newCf).catch(console.error)
+        const prev = get().cashFlows
+        set({ cashFlows: [...prev, newCf] })
+        try {
+          await syncIfConfigured(() => insertCashFlow(newCf))
+          return newCf
+        } catch (err) {
+          set({ cashFlows: prev })
+          throw err
+        }
       },
 
-      updateCashFlow: (id, updates) => {
+      updateCashFlow: async (id, updates) => {
+        const prev = get().cashFlows
         const merged = { ...get().cashFlows.find(c => c.id === id), ...updates }
         set({
           cashFlows: get().cashFlows.map((c) =>
             c.id === id ? merged : c
           ),
         })
-        updateCashFlowRow(id, merged).catch(console.error)
+        try {
+          await syncIfConfigured(() => updateCashFlowRow(id, merged))
+        } catch (err) {
+          set({ cashFlows: prev })
+          throw err
+        }
       },
 
-      deleteCashFlow: (id) => {
-        set({ cashFlows: get().cashFlows.filter((c) => c.id !== id) })
-        deleteCashFlowRow(id).catch(console.error)
+      deleteCashFlow: async (id) => {
+        const prev = get().cashFlows
+        set({ cashFlows: prev.filter((c) => c.id !== id) })
+        try {
+          await syncIfConfigured(() => deleteCashFlowRow(id))
+        } catch (err) {
+          set({ cashFlows: prev })
+          throw err
+        }
       },
 
       /**
@@ -69,25 +101,41 @@ const useCashFlowStore = create(
         }, {})
       },
 
-      clearAll: () => {
+      clearAll: async () => {
+        const prev = get().cashFlows
         set({ cashFlows: [] })
-        clearCashFlows().catch(console.error)
+        try {
+          await syncIfConfigured(() => clearCashFlows())
+        } catch (err) {
+          set({ cashFlows: prev })
+          throw err
+        }
       },
 
       /** 삭제된 반복(고정비) 항목을 참조하던 recurringId를 전부 지운다 */
-      clearRecurringId: (feId) => {
-        const cashFlows = get().cashFlows.map((c) => {
+      clearRecurringId: async (feId) => {
+        const prev = get().cashFlows
+        const updates = []
+        const cashFlows = prev.map((c) => {
           if (c.recurringId !== feId) return c
-          const { recurringId: _removed, ...rest } = c
-          updateCashFlowRow(c.id, rest).catch(console.error)
+          const rest = { ...c }
+          delete rest.recurringId
+          updates.push(rest)
           return rest
         })
         set({ cashFlows })
+        try {
+          await syncIfConfigured(() => Promise.all(updates.map((c) => updateCashFlowRow(c.id, c))))
+        } catch (err) {
+          set({ cashFlows: prev })
+          throw err
+        }
       },
 
       /** Supabase에서 불러온 데이터로 스토어를 교체한다 */
       loadFromCloud: (cashFlows) => {
-        set({ cashFlows })
+        if (!Array.isArray(cashFlows) || cashFlows.length === 0) return
+        set({ cashFlows: mergeById(get().cashFlows, cashFlows) })
       },
     }),
     { name: 'cashflows-v1' }

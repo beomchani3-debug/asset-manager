@@ -13,6 +13,13 @@ import { T } from '../theme'
 
 const APP_VERSION = '1.0.0'
 
+function mergeById(existing, incoming) {
+  const merged = new Map()
+  for (const item of existing) merged.set(item.id, item)
+  for (const item of incoming) merged.set(item.id, { ...merged.get(item.id), ...item })
+  return [...merged.values()]
+}
+
 // ─── 섹션 카드 ────────────────────────────────────────────────────────────────
 function Section({ title, children }) {
   return (
@@ -108,8 +115,12 @@ function FixedExpenseSection() {
     updateFixedExpense(fe.id, { isActive: !fe.isActive })
   }
 
-  function handleDelete(id) {
-    deleteFixedExpense(id)
+  async function handleDelete(id) {
+    const deleted = await deleteFixedExpense(id).then(() => true).catch((err) => {
+      pushToast(err.message ?? '삭제에 실패했습니다', 'error')
+      return false
+    })
+    if (!deleted) return
     setConfirmDeleteId(null)
     pushToast('삭제되었습니다', 'success')
   }
@@ -295,10 +306,14 @@ export default function Settings() {
 
   const [goalInput, setGoalInput] = useState(String(settings.dividendGoalKrw))
 
-  function saveGoal() {
+  async function saveGoal() {
     const val = parseInt(goalInput.replace(/,/g, ''), 10)
     if (!val || val <= 0) { pushToast('올바른 금액을 입력하세요', 'error'); return }
-    updateSettings({ dividendGoalKrw: val })
+    const saved = await updateSettings({ dividendGoalKrw: val }).then(() => true).catch((err) => {
+      pushToast(err.message ?? '저장에 실패했습니다', 'error')
+      return false
+    })
+    if (!saved) return
     pushToast('배당 목표가 저장되었습니다', 'success')
   }
 
@@ -306,10 +321,14 @@ export default function Settings() {
     settings.fxRates.USD > 0 ? String(settings.fxRates.USD) : ''
   )
 
-  function saveFxRates() {
+  async function saveFxRates() {
     const usd = parseFloat(usdInput)
     if (usd > 0) {
-      updateSettings({ fxRates: { ...settings.fxRates, USD: usd } })
+      const saved = await updateSettings({ fxRates: { ...settings.fxRates, USD: usd } }).then(() => true).catch((err) => {
+        pushToast(err.message ?? '저장에 실패했습니다', 'error')
+        return false
+      })
+      if (!saved) return
       pushToast('환율이 저장되었습니다', 'success')
     } else {
       pushToast('올바른 환율을 입력하세요', 'error')
@@ -348,18 +367,24 @@ export default function Settings() {
         if (!Array.isArray(data.transactions) || !Array.isArray(data.cashFlows)) {
           throw new Error('올바른 백업 파일이 아닙니다')
         }
-        const holdings = calcHoldings(data.transactions)
+        const currentTransactions = useTransactionStore.getState().transactions
+        const currentCashFlows = useCashFlowStore.getState().cashFlows
+        const currentSettings = useSettingsStore.getState().settings
+        const mergedTransactions = mergeById(currentTransactions, data.transactions)
+        const mergedCashFlows = mergeById(currentCashFlows, data.cashFlows)
+        const mergedSettings = data.settings ? { ...currentSettings, ...data.settings } : currentSettings
+        const holdings = calcHoldings(mergedTransactions)
         localStorage.setItem('transactions-v2', JSON.stringify({
-          state: { transactions: data.transactions, holdings },
+          state: { transactions: mergedTransactions, holdings },
           version: 0,
         }))
         localStorage.setItem('cashflows-v1', JSON.stringify({
-          state: { cashFlows: data.cashFlows },
+          state: { cashFlows: mergedCashFlows },
           version: 0,
         }))
         if (data.settings) {
           localStorage.setItem('settings-v2', JSON.stringify({
-            state: { settings: data.settings },
+            state: { settings: mergedSettings },
             version: 0,
           }))
         }
@@ -374,10 +399,22 @@ export default function Settings() {
   }
 
   async function handleReset() {
-    await clearAllCloudData().catch(console.error)
-    useTransactionStore.getState().clearAll()
-    useCashFlowStore.getState().clearAll()
-    resetSettings()
+    try {
+      const backup = {
+        exportedAt: new Date().toISOString(),
+        transactions: useTransactionStore.getState().transactions,
+        cashFlows: useCashFlowStore.getState().cashFlows,
+        settings: useSettingsStore.getState().settings,
+      }
+      localStorage.setItem(`asset-manager-reset-backup-${backup.exportedAt}`, JSON.stringify(backup))
+      await clearAllCloudData()
+      await useTransactionStore.getState().clearAll()
+      await useCashFlowStore.getState().clearAll()
+      await resetSettings()
+    } catch (err) {
+      pushToast(err.message ?? '초기화에 실패했습니다', 'error')
+      return
+    }
     setConfirmReset(false)
     pushToast('전체 데이터가 초기화되었습니다', 'success')
   }

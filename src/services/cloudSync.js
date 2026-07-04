@@ -16,13 +16,27 @@ function getTxStore()  { return import('../store/useTransactionStore').then(m =>
 function getCfStore()  { return import('../store/useCashFlowStore').then(m => m.default) }
 function getSetStore() { return import('../store/useSettingsStore').then(m => m.default) }
 
+let loadFromCloudPromise = null
+
 /**
  * Supabase에서 데이터를 읽어 Zustand 스토어에 반영한다.
  * - 마이그레이션 전이고 클라우드가 비어있으면 로컬 데이터를 보존한다.
  */
 export async function loadFromCloud() {
-  if (!isSupabaseConfigured) return { status: 'not_configured' }
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase가 설정되지 않았습니다. .env의 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY를 확인하세요.')
+  }
+  if (loadFromCloudPromise) return loadFromCloudPromise
 
+  loadFromCloudPromise = loadFromCloudInternal()
+  try {
+    return await loadFromCloudPromise
+  } finally {
+    loadFromCloudPromise = null
+  }
+}
+
+async function loadFromCloudInternal() {
   const sync = useSyncStore.getState()
   sync.setIsSyncing(true)
   sync.setSyncError(null)
@@ -52,9 +66,9 @@ export async function loadFromCloud() {
       getTxStore(), getCfStore(), getSetStore(),
     ])
 
-    if (transactions !== null) TxStore.getState().loadFromCloud(transactions)
-    if (cashFlows   !== null) CfStore.getState().loadFromCloud(cashFlows)
-    if (settings    !== null) SetStore.getState().loadFromCloud(settings)
+    if (Array.isArray(transactions) && transactions.length > 0) TxStore.getState().loadFromCloud(transactions)
+    if (Array.isArray(cashFlows) && cashFlows.length > 0) CfStore.getState().loadFromCloud(cashFlows)
+    if (settings !== null) SetStore.getState().loadFromCloud(settings)
 
     sync.setLastSyncAt(new Date())
     return { status: 'synced' }
@@ -107,7 +121,9 @@ export async function migrateToCloud() {
  * 클라우드의 모든 데이터를 삭제한다 (전체 초기화 시 호출).
  */
 export async function clearAllCloudData() {
-  if (!isSupabaseConfigured) return
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase가 설정되지 않았습니다. 클라우드 데이터 삭제를 건너뜁니다.')
+  }
   await Promise.all([clearTransactions(), clearCashFlows(), clearSettings()])
   localStorage.removeItem('cloud-synced')
 }

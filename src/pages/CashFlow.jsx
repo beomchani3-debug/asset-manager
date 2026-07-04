@@ -367,7 +367,7 @@ function CfModal({ onClose, onSave, onDelete, categories, catIcons, initialCf })
 
   function close() { setVisible(false); setTimeout(onClose, 300) }
 
-  function handleSave() {
+  async function handleSave() {
     const finalCat = category === '기타' && customCat.trim() ? customCat.trim() : category
     const amt = parseFloat(amount) || 0
 
@@ -384,8 +384,12 @@ function CfModal({ onClose, onSave, onDelete, categories, catIcons, initialCf })
       }
     }
 
-    onSave({ date, type, category: finalCat, amount: amt, memo: memo.trim(), recurringId })
-    close()
+    try {
+      await onSave({ date, type, category: finalCat, amount: amt, memo: memo.trim(), recurringId })
+      close()
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const cats    = type === '용돈지출' ? categories['변동지출'] : (categories[type] ?? [])
@@ -572,7 +576,14 @@ function CfModal({ onClose, onSave, onDelete, categories, catIcons, initialCf })
                   취소
                 </button>
                 <button
-                  onClick={() => { onDelete(initialCf.id); close() }}
+                  onClick={async () => {
+                    try {
+                      await onDelete(initialCf.id)
+                      close()
+                    } catch (err) {
+                      console.error(err)
+                    }
+                  }}
                   className="flex-1 py-3 text-[13px] font-semibold rounded-2xl active:opacity-80 text-white"
                   style={{ backgroundColor: T.red }}
                 >
@@ -680,12 +691,24 @@ export default function CashFlow() {
   function openEdit(cf)  { setEditingCf(cf);   setModalOpen(true) }
   function closeModal()  { setModalOpen(false); setEditingCf(null) }
 
-  function handleSave(data) {
-    if (editingCf) updateCashFlow(editingCf.id, data)
-    else           addCashFlow(data)
+  async function handleSave(data) {
+    try {
+      if (editingCf) await updateCashFlow(editingCf.id, data)
+      else           await addCashFlow(data)
+      pushToast('저장되었습니다', 'success')
+    } catch (err) {
+      pushToast(err.message ?? '저장에 실패했습니다', 'error')
+      throw err
+    }
   }
-  function handleDelete(id) {
-    deleteCashFlow(id)
+  async function handleDelete(id) {
+    try {
+      await deleteCashFlow(id)
+      pushToast('삭제되었습니다', 'success')
+    } catch (err) {
+      pushToast(err.message ?? '삭제에 실패했습니다', 'error')
+      throw err
+    }
   }
 
   const netPos = summary.net >= 0
@@ -855,7 +878,7 @@ export default function CashFlow() {
                         {items.map((cf) => (
                           <CfRow key={cf.id} cf={cf}
                             onEdit={() => openEdit(cf)}
-                            onDelete={() => deleteCashFlow(cf.id)}
+                            onDelete={() => handleDelete(cf.id)}
                             catIcons={storedIcons} />
                         ))}
                       </div>
@@ -940,7 +963,7 @@ export default function CashFlow() {
                         <div key={cf.id} style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}>
                           <CfRow cf={cf}
                             onEdit={() => openEdit(cf)}
-                            onDelete={() => deleteCashFlow(cf.id)}
+                            onDelete={() => handleDelete(cf.id)}
                             catIcons={storedIcons} />
                         </div>
                       ))}

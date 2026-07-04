@@ -46,7 +46,7 @@ alter table cash_flows add column if not exists recurring_id uuid;
 -- 3) 앱 설정 (배당목표, 환율, 카테고리 등)
 create table if not exists app_settings (
   id           uuid        primary key default gen_random_uuid(),
-  key          text        unique not null,
+  key          text        not null,
   value        jsonb,
   user_id      uuid,
   updated_at   timestamptz default now()
@@ -55,27 +55,50 @@ create table if not exists app_settings (
 -- ── 인덱스 ──────────────────────────────────────────────────
 create index if not exists idx_transactions_date on transactions(date desc);
 create index if not exists idx_transactions_ticker on transactions(ticker);
+create index if not exists idx_transactions_user_id on transactions(user_id);
 create index if not exists idx_cash_flows_date on cash_flows(date desc);
 create index if not exists idx_cash_flows_type on cash_flows(type);
+create index if not exists idx_cash_flows_user_id on cash_flows(user_id);
 create index if not exists idx_app_settings_key on app_settings(key);
+create index if not exists idx_app_settings_user_id on app_settings(user_id);
+
+alter table app_settings drop constraint if exists app_settings_key_key;
+create unique index if not exists idx_app_settings_key_user_id
+  on app_settings(key, user_id);
+
+-- Data preservation / legacy recovery helpers.
+-- Check legacy rows created before login user_id existed:
+-- select count(*) as null_user_transactions from transactions where user_id is null;
+-- select count(*) as null_user_cash_flows from cash_flows where user_id is null;
+-- select count(*) as null_user_settings from app_settings where user_id is null;
+--
+-- If this Supabase project is personal/single-user, connect legacy rows to
+-- the currently signed-in user. This updates ownership only; it does not delete data.
+-- update transactions set user_id = auth.uid() where user_id is null;
+-- update cash_flows set user_id = auth.uid() where user_id is null;
+-- update app_settings set user_id = auth.uid() where user_id is null;
 
 -- ── Row Level Security ───────────────────────────────────────
 -- 개인 앱 (anon key 접근) → RLS 비활성화
-alter table transactions  disable row level security;
-alter table cash_flows    disable row level security;
-alter table app_settings  disable row level security;
+alter table transactions  enable row level security;
+alter table cash_flows    enable row level security;
+alter table app_settings  enable row level security;
 
 -- ── 나중에 로그인 기능 추가 시 (현재는 주석 처리) ────────────────
--- alter table transactions  enable row level security;
--- alter table cash_flows    enable row level security;
--- alter table app_settings  enable row level security;
---
--- create policy "own_transactions" on transactions
---   for all using (auth.uid() = user_id);
--- create policy "own_cash_flows" on cash_flows
---   for all using (auth.uid() = user_id);
--- create policy "own_settings" on app_settings
---   for all using (auth.uid() = user_id);
+drop policy if exists "own_transactions" on transactions;
+create policy "own_transactions" on transactions
+  for all using (auth.uid() = user_id or user_id is null)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "own_cash_flows" on cash_flows;
+create policy "own_cash_flows" on cash_flows
+  for all using (auth.uid() = user_id or user_id is null)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "own_settings" on app_settings;
+create policy "own_settings" on app_settings
+  for all using (auth.uid() = user_id or user_id is null)
+  with check (auth.uid() = user_id);
 
 -- ── updated_at 자동 갱신 트리거 ──────────────────────────────
 create or replace function update_updated_at()

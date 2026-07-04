@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import useTransactionStore from '../store/useTransactionStore'
 import useSettingsStore from '../store/useSettingsStore'
+import useToastStore from '../store/useToastStore'
 import { T } from '../theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete, defaultSide 
     ? Math.round(divNetOrig * (isKRW ? 1 : (parseFloat(form.fxRate)||0)))
     : 0
 
-  function handleSave() {
+  async function handleSave() {
     const p   = parseFloat(form.price)    || 0
     const q   = parseFloat(form.quantity) || 0
     const fx  = parseFloat(form.fxRate)   || 1
@@ -255,18 +256,22 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete, defaultSide 
       : (manualKrw ? parseFloat(form.krwAmount) || Math.round(p * q * (isKRW ? 1 : fx))
                    : Math.round(p * q * (isKRW ? 1 : fx)))
 
-    onSave({
-      date: form.date, side: form.side, broker: form.broker,
-      assetName: form.assetName.trim(),
-      ticker:    form.ticker.trim().toUpperCase(),
-      market:    form.market, sector: form.sector.trim(),
-      currency:  form.currency,
-      price:     p, quantity: q,
-      fxRate:    isKRW ? 1 : fx,
-      krwAmount: krw,
-      memo:      form.memo.trim(),
-    })
-    close()
+    try {
+      await onSave({
+        date: form.date, side: form.side, broker: form.broker,
+        assetName: form.assetName.trim(),
+        ticker:    form.ticker.trim().toUpperCase(),
+        market:    form.market, sector: form.sector.trim(),
+        currency:  form.currency,
+        price:     p, quantity: q,
+        fxRate:    isKRW ? 1 : fx,
+        krwAmount: krw,
+        memo:      form.memo.trim(),
+      })
+      close()
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const canSave =
@@ -567,7 +572,14 @@ function AddEditModal({ tx, suggestions, onClose, onSave, onDelete, defaultSide 
                   취소
                 </button>
                 <button
-                  onClick={() => { onDelete(tx.id); close() }}
+                  onClick={async () => {
+                    try {
+                      await onDelete(tx.id)
+                      close()
+                    } catch (err) {
+                      console.error(err)
+                    }
+                  }}
                   className="flex-1 py-3 text-[13px] font-semibold rounded-2xl active:opacity-80 text-white"
                   style={{ backgroundColor: T.red }}
                 >
@@ -612,6 +624,7 @@ export default function Transactions() {
   const addTransaction    = useTransactionStore((s) => s.addTransaction)
   const updateTransaction = useTransactionStore((s) => s.updateTransaction)
   const deleteTransaction = useTransactionStore((s) => s.deleteTransaction)
+  const pushToast         = useToastStore((s) => s.push)
 
   const suggestions = useMemo(() => {
     const map = new Map()
@@ -642,9 +655,25 @@ export default function Transactions() {
 
   function openAdd() { setEditTx(null); setModalOpen(true) }
   function openEdit(tx) { setEditTx(tx); setModalOpen(true) }
-  function handleSave(data) {
-    if (editTx) updateTransaction(editTx.id, data)
-    else        addTransaction(data)
+  async function handleSave(data) {
+    try {
+      if (editTx) await updateTransaction(editTx.id, data)
+      else        await addTransaction(data)
+      pushToast('저장되었습니다', 'success')
+    } catch (err) {
+      pushToast(err.message ?? '저장에 실패했습니다', 'error')
+      throw err
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await deleteTransaction(id)
+      pushToast('삭제되었습니다', 'success')
+    } catch (err) {
+      pushToast(err.message ?? '삭제에 실패했습니다', 'error')
+      throw err
+    }
   }
 
   return (
@@ -717,7 +746,7 @@ export default function Transactions() {
                     <div key={t.id} style={i > 0 ? { borderTop: `1px solid ${T.divider}` } : {}}>
                       <TxRow tx={t}
                         onEdit={() => openEdit(t)}
-                        onDelete={() => deleteTransaction(t.id)}
+                        onDelete={() => handleDelete(t.id)}
                       />
                     </div>
                   ))}
@@ -760,7 +789,7 @@ export default function Transactions() {
           defaultSide={autoSide}
           onClose={() => { setModalOpen(false); setAutoSide(null) }}
           onSave={handleSave}
-          onDelete={deleteTransaction}
+          onDelete={handleDelete}
         />
       )}
     </div>
