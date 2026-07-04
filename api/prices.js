@@ -24,6 +24,10 @@ function marketToCurrency(market) {
   return 'USD'
 }
 
+// 종목당 캐시 (같은 서버리스 인스턴스가 재사용되는 동안만 유효, 콜드스타트 시 초기화됨)
+const CACHE_TTL_MS = 5 * 60 * 1000
+const priceCache = new Map() // symbol -> { price, currency, cachedAt }
+
 async function yahooFetch(symbol) {
   const signal = AbortSignal.timeout(8000)
   for (const base of [YAHOO_BASE, YAHOO_ALT]) {
@@ -31,15 +35,19 @@ async function yahooFetch(symbol) {
       const url = `${base}/${encodeURIComponent(symbol)}?interval=1d&range=1d`
       const res = await fetch(url, { headers: YAHOO_HEADERS, signal })
       if (!res.ok) {
-        console.warn(`[api/prices] ${base} → ${res.status} for ${symbol}`)
+        // 임시 상세 로깅: 실제 실패 원인(429 rate-limit, 999 차단 등) 확인용
+        const bodySnippet = await res.text().then((t) => t.slice(0, 300)).catch(() => '(no body)')
+        console.warn(`[api/prices] ${base} → HTTP ${res.status} ${res.statusText} for ${symbol}: ${bodySnippet}`)
         continue
       }
       const json = await res.json()
       const price = json?.chart?.result?.[0]?.meta?.regularMarketPrice
       if (price != null) return price
       const chartErr = json?.chart?.error
+      console.warn(`[api/prices] ${base} → 200 OK but no price for ${symbol}:`, JSON.stringify(json).slice(0, 300))
       throw new Error(chartErr ? `${chartErr.code}: ${chartErr.description}` : 'No price in response')
     } catch (e) {
+      console.warn(`[api/prices] ${base} → exception for ${symbol}: ${e.name}: ${e.message}`)
       if (e.name === 'TimeoutError') throw new Error(`Timeout for ${symbol}`)
       if (base === YAHOO_ALT) throw e
     }
@@ -48,9 +56,17 @@ async function yahooFetch(symbol) {
 }
 
 async function fetchSingle(ticker, market) {
-  const symbol = toYahooSymbol(ticker, market)
-  const price  = await yahooFetch(symbol)
-  return { price, currency: marketToCurrency(market) }
+  const symbol   = toYahooSymbol(ticker, market)
+  const currency = marketToCurrency(market)
+
+  const cached = priceCache.get(symbol)
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    return { price: cached.price, currency, fromCache: true }
+  }
+
+  const price = await yahooFetch(symbol)
+  priceCache.set(symbol, { price, cachedAt: Date.now() })
+  return { price, currency, fromCache: false }
 }
 
 export default async function handler(req, res) {
@@ -79,10 +95,11 @@ export default async function handler(req, res) {
     tickerList.map(async (ticker, i) => {
       try {
         data[ticker] = await fetchSingle(ticker, marketList[i])
-        console.log(`[api/prices] ✓ ${ticker} (${marketList[i]}): ${data[ticker].price} ${data[ticker].currency}`)
+        const { price, currency, fromCache } = data[ticker]
+        console.log(`[api/prices] ✓ ${ticker} (${marketList[i]}): ${price} ${currency}${fromCache ? ' (cache)' : ''}`)
       } catch (err) {
         console.error(`[api/prices] ✗ ${ticker} (${marketList[i]}): ${err.message}`)
-        failed.push({ ticker, reason: err.message })
+        failed.push({ ticker, market: marketList[i], reason: err.message })
       }
     })
   )

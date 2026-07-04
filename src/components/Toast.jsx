@@ -7,11 +7,13 @@ const TYPE_BG = {
   success: T.green,
   error:   T.red,
   warning: T.amber,
+  info:    T.blue,
 }
 const TYPE_ICON = {
   success: '✓',
   error:   '✕',
   warning: '⚠',
+  info:    'ℹ',
 }
 
 function ToastItem({ id, message, type }) {

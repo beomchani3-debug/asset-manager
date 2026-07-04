@@ -7,6 +7,15 @@ function marketToCurrency(market) {
   return 'USD'
 }
 
+// 같은 종목은 N분 내 재조회하지 않음 (rate-limit 방지)
+const CACHE_TTL_MS = 5 * 60 * 1000
+
+function isFresh(ticker) {
+  const entry = usePriceStore.getState().getPrice(ticker)
+  if (!entry?.updatedAt) return false
+  return Date.now() - new Date(entry.updatedAt).getTime() < CACHE_TTL_MS
+}
+
 /**
  * 단일 종목 현재가 조회 → usePriceStore 저장.
  * 수동 가격 설정 시 API 호출 없이 저장값 사용.
@@ -19,6 +28,10 @@ export async function fetchPrice(ticker, market) {
   if (manual != null) {
     usePriceStore.getState().setPrice(ticker, manual, currency)
     return manual
+  }
+
+  if (isFresh(ticker)) {
+    return usePriceStore.getState().getPrice(ticker).price
   }
 
   try {
@@ -51,12 +64,13 @@ export async function fetchAllPrices(holdings) {
   const manualPrices = useSettingsStore.getState().settings.manualPrices ?? {}
 
   // Apply manual prices immediately; collect tickers that need API fetch
+  // (캐시가 아직 신선한 종목은 재호출 skip - 기존 저장값 유지)
   const toFetch = []
   for (const h of unique) {
     const manual = manualPrices[h.ticker]
     if (manual != null) {
       usePriceStore.getState().setPrice(h.ticker, manual, marketToCurrency(h.market))
-    } else {
+    } else if (!isFresh(h.ticker)) {
       toFetch.push(h)
     }
   }
@@ -84,7 +98,7 @@ export async function fetchAllPrices(holdings) {
   } catch (err) {
     console.error('[priceService] batch fetch error:', err.message)
     return {
-      failed: toFetch.map((h) => ({ ticker: h.ticker, reason: err.message })),
+      failed: toFetch.map((h) => ({ ticker: h.ticker, market: h.market, reason: err.message })),
     }
   }
 }
