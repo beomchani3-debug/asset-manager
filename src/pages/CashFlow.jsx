@@ -5,7 +5,6 @@ import useSettingsStore from '../store/useSettingsStore'
 import useFixedExpenseStore from '../store/useFixedExpenseStore'
 import useToastStore from '../store/useToastStore'
 import { useRecurringSuggestions } from '../hooks/useRecurringSuggestions'
-import { currentYearMonth } from '../utils/date'
 import { T } from '../theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -381,7 +380,7 @@ function CfModal({ onClose, onSave, onDelete, categories, catIcons, initialCf })
       } else {
         const fe = addFixedExpense({ name: finalCat, amount: amt, day, isActive: true })
         recurringId = fe.id
-        markInserted(currentYearMonth(), fe.id)
+        markInserted(date.slice(0, 7), fe.id)
       }
     }
 

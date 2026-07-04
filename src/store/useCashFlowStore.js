@@ -74,6 +74,17 @@ const useCashFlowStore = create(
         clearCashFlows().catch(console.error)
       },
 
+      /** 삭제된 반복(고정비) 항목을 참조하던 recurringId를 전부 지운다 */
+      clearRecurringId: (feId) => {
+        const cashFlows = get().cashFlows.map((c) => {
+          if (c.recurringId !== feId) return c
+          const { recurringId: _removed, ...rest } = c
+          updateCashFlowRow(c.id, rest).catch(console.error)
+          return rest
+        })
+        set({ cashFlows })
+      },
+
       /** Supabase에서 불러온 데이터로 스토어를 교체한다 */
       loadFromCloud: (cashFlows) => {
         set({ cashFlows })

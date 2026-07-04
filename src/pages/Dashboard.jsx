@@ -6,7 +6,6 @@ import useCashFlowStore from '../store/useCashFlowStore'
 import useSettingsStore from '../store/useSettingsStore'
 import usePriceStore from '../store/usePriceStore'
 import usePortfolioSnapshotStore from '../store/usePortfolioSnapshotStore'
-import useBudgetStore from '../store/useBudgetStore'
 import { usePriceService } from '../hooks/usePriceService'
 import { calcPnL } from '../utils/pnl'
 import { T, MARKET_COLOR } from '../theme'
@@ -137,7 +136,6 @@ export default function Dashboard() {
   const prices            = usePriceStore((s) => s.prices)
   const { snapshots, saveSnapshot } = usePortfolioSnapshotStore()
   const { refreshAll, isLoading, lastUpdatedAt } = usePriceService()
-  const budgets = useBudgetStore((s) => s.budgets)
 
   // ── Date ─────────────────────────────────────────────────────────────────
   const today    = new Date()
@@ -212,19 +210,6 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
   }, [portfolio])
 
-  // ── Budget warning ────────────────────────────────────────────────────────
-  const overBudgetCats = useMemo(() => {
-    if (!Object.keys(budgets).length) return []
-    const thisMonthFlows = cashFlows.filter((c) => c.date.startsWith(thisYM) && c.type !== '수입')
-    const spendByCat = {}
-    for (const c of thisMonthFlows) spendByCat[c.category] = (spendByCat[c.category] ?? 0) + c.amount
-    return Object.entries(budgets)
-      .filter(([, budget]) => budget > 0)
-      .map(([cat, budget]) => ({ cat, budget, spent: spendByCat[cat] ?? 0, pct: (spendByCat[cat] ?? 0) / budget * 100 }))
-      .filter(({ pct }) => pct >= 90)
-      .sort((a, b) => b.pct - a.pct)
-  }, [cashFlows, thisYM, budgets])
-
   // ── Chart data (last 6 monthly snapshots) ─────────────────────────────────
   const chartData = useMemo(() => {
     const entries = Object.entries(snapshots).sort((a, b) => a[0].localeCompare(b[0])).slice(-6)
@@ -298,20 +283,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ① 예산 초과 경고 배너 */}
-      {overBudgetCats.length > 0 && (
-        <button
-          onClick={() => navigate('/budget')}
-          className="w-full text-left rounded-2xl px-4 py-3 active:opacity-80 transition-opacity"
-          style={{ backgroundColor: 'rgba(224,82,82,0.1)', border: `1px solid ${T.red}` }}
-        >
-          <p className="text-[12px] font-semibold leading-relaxed" style={{ color: T.red }}>
-            ⚠ {overBudgetCats.map((c) => c.pct >= 100 ? `${c.cat} 예산 초과` : `${c.cat} ${Math.round(c.pct)}% 도달`).join(' · ')}
-          </p>
-        </button>
-      )}
-
-      {/* ② 총 평가금액 카드 */}
+      {/* 총 평가금액 카드 */}
       <div
         className="rounded-2xl p-5 shadow-lg"
         style={{ background: 'linear-gradient(135deg, #1C1500 0%, #2D2000 55%, #1A1400 100%)', border: `1px solid ${T.gold}` }}

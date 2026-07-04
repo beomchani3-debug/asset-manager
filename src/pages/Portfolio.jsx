@@ -277,7 +277,11 @@ export default function Portfolio() {
   const divByTicker = useMemo(() => {
     const cutoff = new Date()
     cutoff.setFullYear(cutoff.getFullYear() - 1)
-    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const cutoffStr = [
+      cutoff.getFullYear(),
+      String(cutoff.getMonth() + 1).padStart(2, '0'),
+      String(cutoff.getDate()).padStart(2, '0'),
+    ].join('-')
 
     const map = {}
     for (const tx of transactions) {

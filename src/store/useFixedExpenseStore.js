@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import useCashFlowStore from './useCashFlowStore'
 
 const useFixedExpenseStore = create(
   persist(
@@ -29,6 +30,7 @@ const useFixedExpenseStore = create(
 
       deleteFixedExpense: (id) => {
         set({ fixedExpenses: get().fixedExpenses.filter((fe) => fe.id !== id) })
+        useCashFlowStore.getState().clearRecurringId(id)
       },
 
       markInserted: (yearMonth, id) => {

@@ -374,11 +374,11 @@ export default function Settings() {
   }
 
   async function handleReset() {
+    await clearAllCloudData().catch(console.error)
     useTransactionStore.getState().clearAll()
     useCashFlowStore.getState().clearAll()
     resetSettings()
     setConfirmReset(false)
-    await clearAllCloudData().catch(console.error)
     pushToast('전체 데이터가 초기화되었습니다', 'success')
   }
 
